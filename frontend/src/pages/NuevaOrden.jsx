@@ -270,6 +270,18 @@ function NuevaOrden() {
             </div>
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
+                Nombre del Producto
+              </label>
+              <input
+                type="text"
+                value={productoSeleccionado?.nombre_producto || ''}
+                disabled
+                placeholder="Se autocompletará"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-text-secondary transition-all duration-200"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Registro Sanitario
               </label>
               <input

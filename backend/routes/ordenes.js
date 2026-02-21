@@ -115,7 +115,7 @@ router.post('/', async (req, res) => {
          otros_biologicos_chk, otros_biologicos_autorizado, bioequivalente_chk, bioequivalente_autorizado,
          biotecnologico_chk, biotecnologico_autorizado, cpb_numero, monto,
          fecha_recepcion, fecha_ingreso_vuce, fecha_fin_proceso, observaciones)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [tipo_producto, cliente_id, producto_id, categoria1 || false, categoria2 || false,
        cambio_mayor || false, cambio_mayor_autorizado, cambio_menor || false, cambio_menor_autorizado,
        inscripcion || false, inscripcion_autorizado, renovacion || false, renovacion_autorizado,

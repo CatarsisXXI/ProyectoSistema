@@ -135,6 +135,34 @@ function NuevoDocumento() {
     setFormData(prev => ({ ...prev, producto_id: '' }));
   };
 
+  const calculateTotal = () => {
+    let total = 0;
+
+    if (tipoProducto === 'farmaceutico') {
+      if (formData.cambio_mayor && formData.cambio_mayor_costo) total += parseFloat(formData.cambio_mayor_costo) || 0;
+      if (formData.cambio_menor && formData.cambio_menor_costo) total += parseFloat(formData.cambio_menor_costo) || 0;
+      if (formData.inscripcion && formData.inscripcion_costo) total += parseFloat(formData.inscripcion_costo) || 0;
+      if (formData.renovacion && formData.renovacion_costo) total += parseFloat(formData.renovacion_costo) || 0;
+      if (formData.traduccion && formData.traduccion_costo) total += parseFloat(formData.traduccion_costo) || 0;
+    } else if (tipoProducto === 'dispositivo_medico') {
+      if (formData.clase1 && formData.clase1_costo) total += parseFloat(formData.clase1_costo) || 0;
+      if (formData.clase2 && formData.clase2_costo) total += parseFloat(formData.clase2_costo) || 0;
+      if (formData.clase3 && formData.clase3_costo) total += parseFloat(formData.clase3_costo) || 0;
+      if (formData.clase4 && formData.clase4_costo) total += parseFloat(formData.clase4_costo) || 0;
+      if (formData.traduccion && formData.traduccion_costo) total += parseFloat(formData.traduccion_costo) || 0;
+    } else if (tipoProducto === 'biologico') {
+      if (formData.vaccines_inmunologicos && formData.vaccines_inmunologicos_costo) total += parseFloat(formData.vaccines_inmunologicos_costo) || 0;
+      if (formData.otros_biologicos && formData.otros_biologicos_costo) total += parseFloat(formData.otros_biologicos_costo) || 0;
+      if (formData.bioequivalente && formData.bioequivalente_costo) total += parseFloat(formData.bioequivalente_costo) || 0;
+      if (formData.biotecnologico && formData.biotecnologico_costo) total += parseFloat(formData.biotecnologico_costo) || 0;
+      if (formData.traduccion && formData.traduccion_costo) total += parseFloat(formData.traduccion_costo) || 0;
+    }
+
+    if (formData.derecho_tramite_monto) total += parseFloat(formData.derecho_tramite_monto) || 0;
+
+    return total.toFixed(2);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -142,9 +170,33 @@ function NuevoDocumento() {
 
     try {
       const token = localStorage.getItem('token');
+      let pdfFilename = '';
+
+      // Si hay archivo PDF, subirlo primero
+      if (pdfAdjunto) {
+        const formDataPdf = new FormData();
+        formDataPdf.append('pdf', pdfAdjunto);
+        
+        try {
+          const uploadRes = await axios.post('/api/documentos/upload', formDataPdf, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          pdfFilename = uploadRes.data.filename;
+        } catch (uploadError) {
+          console.error('Error al subir PDF:', uploadError);
+          setError('Error al subir el archivo PDF');
+          setLoading(false);
+          return;
+        }
+      }
+
       await axios.post('/api/documentos', {
         tipo_producto: tipoProducto,
-        ...formData
+        ...formData,
+        pdf_adjunto: pdfFilename
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -506,7 +558,7 @@ function NuevoDocumento() {
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <h2 className="text-lg font-semibold text-text-primary mb-4">Derecho de Trámite (Tasa de Salud)</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
                 CPB N°
@@ -531,6 +583,36 @@ function NuevoDocumento() {
                 step="0.01"
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">
+                Archivo Adjunto (PDF)
+              </label>
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={(e) => setPdfAdjunto(e.target.files?.[0] || null)}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none
+                          file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-opacity-90"
+              />
+              {pdfAdjunto && (
+                <p className="text-xs text-green-600 mt-1">✓ {pdfAdjunto.name}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Total */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-sm p-6 mb-6 border border-blue-200">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary mb-1">Total</h2>
+              <p className="text-sm text-text-secondary">Suma de todos los costos ingresados</p>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold text-primary">
+                S/. {calculateTotal()}
+              </div>
             </div>
           </div>
         </div>

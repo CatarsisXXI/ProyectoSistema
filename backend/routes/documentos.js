@@ -199,7 +199,7 @@ router.post('/', async (req, res) => {
          bioequivalente, bioequivalente_costo, bioequivalente_moneda,
          biotecnologico, biotecnologico_costo, biotecnologico_moneda,
          derecho_tramite_cpb, derecho_tramite_monto, pdf_adjunto)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [tipo_producto, cliente_id, producto_id, categoria1 || false, categoria2 || false,
        cambio_mayor || false, cambio_mayor_costo, cambio_mayor_moneda,
        cambio_menor || false, cambio_menor_costo, cambio_menor_moneda,
@@ -264,10 +264,9 @@ router.get('/reporte/contabilidad', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 
-        dc.id,
+        dc.*,
         c.razon_social as cliente,
         c.ruc,
-        dc.tipo_producto,
         CASE 
           WHEN dc.tipo_producto = 'farmaceutico' THEN pf.nombre_producto
           WHEN dc.tipo_producto = 'dispositivo_medico' THEN dm.nombre_producto
@@ -277,10 +276,7 @@ router.get('/reporte/contabilidad', async (req, res) => {
           WHEN dc.tipo_producto = 'farmaceutico' THEN pf.codigo_registro
           WHEN dc.tipo_producto = 'dispositivo_medico' THEN dm.codigo_registro
           WHEN dc.tipo_producto = 'biologico' THEN pb.codigo_registro
-        END as registro_sanitario,
-        dc.derecho_tramite_cpb,
-        dc.derecho_tramite_monto,
-        dc.created_at
+        END as registro_sanitario
       FROM documentos_contables dc
       LEFT JOIN clientes c ON dc.cliente_id = c.id
       LEFT JOIN productos_farmaceuticos pf ON dc.tipo_producto = 'farmaceutico' AND dc.producto_id = pf.id
