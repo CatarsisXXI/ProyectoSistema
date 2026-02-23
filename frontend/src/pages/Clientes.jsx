@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { UserPlus, Pencil, Trash2, Search, Phone, Mail } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Search, Phone, Mail, Calendar } from 'lucide-react';
 
 function Clientes() {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchClientes();
-  }, []);
+  const location = useLocation();
 
   const fetchClientes = async () => {
     try {
@@ -25,6 +22,10 @@ function Clientes() {
     }
   };
 
+  useEffect(() => {
+    fetchClientes();
+  }, [location.key]);
+
   const eliminarCliente = async (id) => {
     if (window.confirm('¿Está seguro de eliminar este cliente?')) {
       try {
@@ -37,6 +38,18 @@ function Clientes() {
         console.error('Error deleting cliente:', error);
       }
     }
+  };
+
+  const formatFecha = (fecha) => {
+    if (!fecha) return '-';
+    const date = new Date(fecha);
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
@@ -79,12 +92,13 @@ function Clientes() {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Representante</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Contacto</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoría</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha Registro</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {clientes.map((cliente) => {
-                // 🔧 CORRECCIÓN: Parseo seguro de categoría
+                // Parseo seguro de categoría
                 let categorias = [];
                 if (cliente.categoria) {
                   try {
@@ -92,17 +106,6 @@ function Clientes() {
                     categorias = Array.isArray(parsed) ? parsed : [];
                   } catch (e) {
                     categorias = [];
-                  }
-                }
-
-                // 🔧 CORRECCIÓN: Parseo seguro de solicitud (si lo necesitas más adelante)
-                let solicitudes = [];
-                if (cliente.solicitud) {
-                  try {
-                    const parsed = JSON.parse(cliente.solicitud);
-                    solicitudes = Array.isArray(parsed) ? parsed : [];
-                  } catch (e) {
-                    solicitudes = [];
                   }
                 }
 
@@ -152,6 +155,12 @@ function Clientes() {
                           ))}
                         </div>
                       ) : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <div className="flex items-center gap-1">
+                        <Calendar size={14} className="text-slate-400" />
+                        {formatFecha(cliente.created_at)}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">

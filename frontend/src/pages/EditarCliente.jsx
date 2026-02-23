@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Save, ArrowLeft, Loader2, Phone, Mail, FileText } from 'lucide-react';
+import { Save, ArrowLeft, Loader2, Phone, Mail, FileText, Calendar } from 'lucide-react';
 
 // Opciones definidas en el backend
 const CATEGORIAS = ['Drogueria', 'Botica', 'Clinica', 'Hospital', 'Farmacia'];
@@ -14,6 +14,7 @@ function EditarCliente() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fechaRegistro, setFechaRegistro] = useState('');
   
   const [formData, setFormData] = useState({
     ruc: '',
@@ -30,7 +31,7 @@ function EditarCliente() {
     otros_solicitud: ''
   });
 
-  // Determina si se debe mostrar el campo de texto para 'otros'
+  // Determina si se debe mostrar el campo de texto para 'Otros'
   const mostrarOtros = formData.solicitud.includes('Otros');
 
   useEffect(() => {
@@ -45,7 +46,19 @@ function EditarCliente() {
       });
       const data = res.data;
 
-      // 🔧 CORRECCIÓN: Parseo seguro de categoría
+      // Guardar fecha de registro para mostrarla
+      if (data.created_at) {
+        const fecha = new Date(data.created_at);
+        setFechaRegistro(fecha.toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }));
+      }
+
+      // Parseo seguro de categoría
       let categoriaArray = [];
       if (data.categoria) {
         try {
@@ -56,7 +69,7 @@ function EditarCliente() {
         }
       }
 
-      // 🔧 CORRECCIÓN: Parseo seguro de solicitud
+      // Parseo seguro de solicitud
       let solicitudArray = [];
       if (data.solicitud) {
         try {
@@ -106,16 +119,24 @@ function EditarCliente() {
   };
 
   const handleSolicitudChange = (sol) => {
-    const newSolicitud = formData.solicitud.includes(sol)
-      ? formData.solicitud.filter(item => item !== sol)
-      : [...formData.solicitud, sol];
+    setFormData(prev => {
+      const estabaMarcado = prev.solicitud.includes(sol);
+      let newSolicitud;
+      if (estabaMarcado) {
+        newSolicitud = prev.solicitud.filter(item => item !== sol);
+      } else {
+        newSolicitud = [...prev.solicitud, sol];
+      }
 
-    setFormData(prev => ({
-      ...prev,
-      solicitud: newSolicitud,
-      // Si se desmarca 'otros', limpiamos el campo
-      otros_solicitud: (sol === 'Otros' && prev.solicitud.includes(sol)) ? '' : prev.otros_solicitud
-    }));
+      // Si se desmarca 'Otros', limpiamos el campo otros_solicitud
+      const nuevosOtros = (sol === 'Otros' && estabaMarcado) ? '' : prev.otros_solicitud;
+
+      return {
+        ...prev,
+        solicitud: newSolicitud,
+        otros_solicitud: nuevosOtros
+      };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -187,6 +208,14 @@ function EditarCliente() {
         <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm flex items-center gap-2">
           <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
           {success} Redirigiendo...
+        </div>
+      )}
+
+      {/* Fecha de registro informativa (solo lectura) */}
+      {fechaRegistro && (
+        <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-slate-600 flex items-center gap-2">
+          <Calendar size={16} className="text-blue-500" />
+          <span>Fecha de registro: <strong>{fechaRegistro}</strong></span>
         </div>
       )}
 
@@ -410,7 +439,7 @@ function EditarCliente() {
               </div>
             </div>
 
-            {/* Campo de texto para 'otros' (solo visible si está seleccionado) */}
+            {/* Campo de texto para 'Otros' (solo visible si está seleccionado) */}
             {mostrarOtros && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
