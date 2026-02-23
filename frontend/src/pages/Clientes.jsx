@@ -52,6 +52,33 @@ function Clientes() {
     });
   };
 
+  // Parseo seguro de categorías
+  const parseCategorias = (categoriaStr) => {
+    if (!categoriaStr) return [];
+    try {
+      const parsed = JSON.parse(categoriaStr);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  // Parseo seguro de solicitudes (incluye manejo de "Otros")
+  const parseSolicitudes = (solicitudStr, otros) => {
+    if (!solicitudStr) return [];
+    try {
+      const parsed = JSON.parse(solicitudStr);
+      const solicitudes = Array.isArray(parsed) ? parsed : [];
+      // Si incluye "Otros" y hay texto, devolver un array con los textos correspondientes
+      if (solicitudes.includes('Otros') && otros) {
+        return solicitudes.map(s => s === 'Otros' ? `Otros: ${otros}` : s);
+      }
+      return solicitudes;
+    } catch (e) {
+      return [];
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -88,26 +115,23 @@ function Clientes() {
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Código</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">RUC</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Razón Social</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Representante</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Cliente</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Representante Legal</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Contacto</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoría</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha Registro</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Solicitud</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha de Registro</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {clientes.map((cliente) => {
-                // Parseo seguro de categoría
-                let categorias = [];
-                if (cliente.categoria) {
-                  try {
-                    const parsed = JSON.parse(cliente.categoria);
-                    categorias = Array.isArray(parsed) ? parsed : [];
-                  } catch (e) {
-                    categorias = [];
-                  }
-                }
+                const categorias = parseCategorias(cliente.categoria);
+                const solicitudes = parseSolicitudes(cliente.solicitud, cliente.otros_solicitud);
+
+                // Recolectar todos los correos y teléfonos disponibles
+                const correos = [cliente.email1, cliente.email2, cliente.email3].filter(Boolean);
+                const celulares = [cliente.celular1, cliente.celular2, cliente.celular3].filter(Boolean);
 
                 return (
                   <tr 
@@ -127,19 +151,28 @@ function Clientes() {
                       {cliente.representante_legal || '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500">
-                      <div className="flex flex-col gap-1">
-                        {cliente.email1 && (
-                          <span className="flex items-center gap-1">
-                            <Mail size={12} className="text-slate-400" />
-                            <span className="text-xs">{cliente.email1}</span>
-                          </span>
+                      <div className="space-y-1">
+                        {correos.length > 0 && (
+                          <div className="flex flex-col gap-0.5">
+                            {correos.map((correo, idx) => (
+                              <span key={`email-${idx}`} className="flex items-center gap-1">
+                                <Mail size={12} className="text-slate-400" />
+                                <span className="text-xs">{correo}</span>
+                              </span>
+                            ))}
+                          </div>
                         )}
-                        {cliente.celular1 && (
-                          <span className="flex items-center gap-1">
-                            <Phone size={12} className="text-slate-400" />
-                            <span className="text-xs">{cliente.celular1}</span>
-                          </span>
+                        {celulares.length > 0 && (
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            {celulares.map((celular, idx) => (
+                              <span key={`cel-${idx}`} className="flex items-center gap-1">
+                                <Phone size={12} className="text-slate-400" />
+                                <span className="text-xs">{celular}</span>
+                              </span>
+                            ))}
+                          </div>
                         )}
+                        {correos.length === 0 && celulares.length === 0 && '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -151,6 +184,20 @@ function Clientes() {
                               className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                             >
                               {cat}
+                            </span>
+                          ))}
+                        </div>
+                      ) : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {solicitudes.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {solicitudes.map((sol, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                            >
+                              {sol}
                             </span>
                           ))}
                         </div>

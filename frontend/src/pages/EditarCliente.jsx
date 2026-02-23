@@ -145,11 +145,10 @@ function EditarCliente() {
     setError('');
     setSuccess('');
 
-    // Convertir arrays a JSON string para el backend
+    // Enviar los arrays directamente, el backend los stringificará
     const payload = {
-      ...formData,
-      categoria: JSON.stringify(formData.categoria),
-      solicitud: JSON.stringify(formData.solicitud)
+      ...formData
+      // No hacemos JSON.stringify aquí
     };
 
     try {

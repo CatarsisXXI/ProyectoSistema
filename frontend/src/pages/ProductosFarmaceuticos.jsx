@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, Pencil, Search, Calendar, User, Package } from 'lucide-react';
+import { Plus, Pencil, Search, Calendar, User, Package, Globe } from 'lucide-react';
 
 function ProductosFarmaceuticos() {
   const [productos, setProductos] = useState([]);
@@ -26,7 +26,6 @@ function ProductosFarmaceuticos() {
     fetchProductos();
   }, [location.key]);
 
-  // Formatear fecha
   const formatearFecha = (fechaISO) => {
     if (!fechaISO) return '-';
     const fecha = new Date(fechaISO);
@@ -71,19 +70,19 @@ function ProductosFarmaceuticos() {
           <table className="w-full">
             <thead className="bg-blue-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Código Registro</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Registro Sanitario</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Nombre del Producto</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoría</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fabricante</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">País de Origen</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">PAVS</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha Registro</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Registrado por</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha de Registro</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Usuario</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {productos.map((producto) => {
-                // Construir etiquetas de categoría (booleanos)
                 const categorias = [];
                 if (producto.categoria1) categorias.push('Categoría 1');
                 if (producto.categoria2) categorias.push('Categoría 2');
@@ -117,6 +116,9 @@ function ProductosFarmaceuticos() {
                       {producto.fabricante || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      {producto.pais_origen || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                       {producto.pavs ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Sí</span>
                       ) : (
@@ -144,7 +146,6 @@ function ProductosFarmaceuticos() {
                         >
                           <Pencil size={16} />
                         </Link>
-                        {/* Si se desea eliminar, se puede agregar similar a clientes */}
                       </div>
                     </td>
                   </tr>
