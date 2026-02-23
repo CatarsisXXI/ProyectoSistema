@@ -1,19 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  FileText, 
-  Filter, 
-  Printer, 
-  Calendar, 
-  User, 
-  Package, 
-  DollarSign,
-  FileCheck,
-  Download,
-  Eye,
-  ChevronRight,
-  AlertCircle
-} from 'lucide-react';
+import { Filter, Printer, FileText, Calendar, User, Package, Download } from 'lucide-react';
 
 function Reportes() {
   const [reportes, setReportes] = useState([]);
@@ -53,11 +40,11 @@ function Reportes() {
 
   const getTipoColor = (tipo) => {
     const colors = {
-      farmaceutico: 'bg-blue-100 text-blue-800 border-blue-200',
-      dispositivo_medico: 'bg-purple-100 text-purple-800 border-purple-200',
-      biologico: 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      farmaceutico: 'bg-blue-100 text-blue-800',
+      dispositivo_medico: 'bg-purple-100 text-purple-800',
+      biologico: 'bg-emerald-100 text-emerald-800'
     };
-    return colors[tipo] || 'bg-slate-100 text-slate-800 border-slate-200';
+    return colors[tipo] || 'bg-slate-100 text-slate-800';
   };
 
   const getServiciosFarmaceutico = (reporte) => {
@@ -177,6 +164,224 @@ function Reportes() {
     });
   };
 
+  const formatearFechaHora = (fechaISO) => {
+    if (!fechaISO) return '-';
+    const fecha = new Date(fechaISO);
+    return fecha.toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleImprimir = (reporte) => {
+    const ventanaImpresion = window.open('', '_blank');
+    const contenidoHTML = generarHTMLImpresion(reporte);
+    ventanaImpresion.document.write(contenidoHTML);
+    ventanaImpresion.document.close();
+    ventanaImpresion.onload = () => {
+      ventanaImpresion.print();
+    };
+  };
+
+  const generarHTMLImpresion = (reporte) => {
+    const estilos = `
+      <style>
+        body {
+          font-family: 'Inter', system-ui, -apple-system, sans-serif;
+          margin: 0;
+          padding: 20px;
+          background: white;
+          color: #1e293b;
+        }
+        .print-container {
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 2px solid #2563eb;
+          padding-bottom: 15px;
+          margin-bottom: 20px;
+        }
+        .header h1 {
+          font-size: 24px;
+          font-weight: bold;
+          color: #1e293b;
+          margin: 0;
+        }
+        .header .subtitle {
+          color: #64748b;
+          font-size: 14px;
+        }
+        .empresa-info {
+          text-align: right;
+          font-size: 14px;
+          color: #475569;
+        }
+        .seccion {
+          margin-bottom: 25px;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .seccion-titulo {
+          background: #f1f5f9;
+          padding: 10px 15px;
+          font-weight: 600;
+          color: #0f172a;
+          border-bottom: 1px solid #cbd5e1;
+        }
+        .seccion-contenido {
+          padding: 15px;
+          background: white;
+        }
+        .grid-2 {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+        }
+        .campo {
+          margin-bottom: 10px;
+        }
+        .campo-label {
+          font-size: 12px;
+          color: #64748b;
+          margin-bottom: 2px;
+        }
+        .campo-valor {
+          font-weight: 500;
+          color: #0f172a;
+          font-size: 14px;
+        }
+        .badge {
+          display: inline-block;
+          padding: 4px 8px;
+          border-radius: 9999px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+        .badge-blue {
+          background: #dbeafe;
+          color: #1e40af;
+        }
+        .footer {
+          margin-top: 30px;
+          text-align: center;
+          font-size: 12px;
+          color: #94a3b8;
+          border-top: 1px solid #e2e8f0;
+          padding-top: 15px;
+        }
+        .servicios-lista {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        .servicios-lista li {
+          padding: 8px 0;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .servicios-lista li:last-child {
+          border-bottom: none;
+        }
+      </style>
+    `;
+
+    const servicios = getServicios(reporte);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Reporte Contable #${reporte.id}</title>
+          ${estilos}
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="header">
+              <div>
+                <h1>Reporte Contable #${reporte.id}</h1>
+                <div class="subtitle">${getTipoLabel(reporte.tipo_producto)}</div>
+              </div>
+              <div class="empresa-info">
+                <div><strong>SGR</strong></div>
+                <div>Sistema de Gestión de Reportes</div>
+                <div>${formatearFechaHora(reporte.created_at)}</div>
+              </div>
+            </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">Cliente</div>
+              <div class="seccion-contenido">
+                <div class="grid-2">
+                  <div class="campo">
+                    <div class="campo-label">Razón Social</div>
+                    <div class="campo-valor">${reporte.cliente || '-'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">RUC</div>
+                    <div class="campo-valor">${reporte.ruc || '-'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">Servicios</div>
+              <div class="seccion-contenido">
+                ${servicios.length > 0 ? `
+                  <ul class="servicios-lista">
+                    ${servicios.map(s => `
+                      <li>
+                        <strong>${s.nombre}</strong>
+                        ${s.categoria ? ` (${s.categoria})` : ''}
+                        <div style="font-size:12px; color:#64748b;">
+                          ${s.producto} - Reg. ${s.sanitario}
+                        </div>
+                      </li>
+                    `).join('')}
+                  </ul>
+                ` : '<p>No hay servicios contratados</p>'}
+              </div>
+            </div>
+
+            ${(reporte.derecho_tramite_cpb || reporte.derecho_tramite_monto) ? `
+              <div class="seccion">
+                <div class="seccion-titulo">Derecho de Trámite (Tasa de Salud)</div>
+                <div class="seccion-contenido">
+                  <div style="display: flex; justify-content: space-between;">
+                    ${reporte.derecho_tramite_cpb ? `<span><span style="color:#64748b;">CPB N°:</span> ${reporte.derecho_tramite_cpb}</span>` : ''}
+                    ${reporte.derecho_tramite_monto ? `<span><strong>${formatCurrency(reporte.derecho_tramite_monto)}</strong></span>` : ''}
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+
+            ${reporte.pdf_adjunto ? `
+              <div class="seccion">
+                <div class="seccion-titulo">Documento Adjunto</div>
+                <div class="seccion-contenido">
+                  <div class="campo-valor">${reporte.pdf_adjunto}</div>
+                </div>
+              </div>
+            ` : ''}
+
+            <div class="footer">
+              Documento generado por SGR - Sistema de Gestión de Reportes
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+    return html;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -194,19 +399,8 @@ function Reportes() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-800">Reportes para Contabilidad</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Reporte de documentos contables por producto
-          </p>
+          <p className="text-slate-500 text-sm mt-1">Reporte de documentos contables por producto</p>
         </div>
-        {filteredReportes.length > 0 && (
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98]"
-          >
-            <Printer size={18} />
-            <span className="font-medium">Imprimir Reportes</span>
-          </button>
-        )}
       </div>
 
       {/* Filtros */}
@@ -259,60 +453,71 @@ function Reportes() {
         </div>
       </div>
 
-      {/* Reportes */}
+      {/* Report Cards */}
       {filteredReportes.length === 0 ? (
-        <div className="text-center py-16 px-4 bg-white rounded-xl shadow-sm border border-slate-200">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
-            <AlertCircle size={24} className="text-blue-400" />
-          </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+          <FileText size={48} className="mx-auto text-slate-300 mb-4" />
           <h3 className="text-lg font-medium text-slate-700 mb-1">No hay reportes</h3>
-          <p className="text-slate-500 text-sm">No se encontraron documentos contables para el filtro seleccionado.</p>
+          <p className="text-slate-500 text-sm">No se encontraron documentos contables para mostrar.</p>
         </div>
       ) : (
         <div className="space-y-6">
           {filteredReportes.map((reporte) => {
             const servicios = getServicios(reporte);
             return (
-              <div 
-                key={reporte.id} 
-                className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden print:break-inside-avoid hover:shadow-lg transition-shadow duration-300"
-              >
+              <div key={reporte.id} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden print:break-inside-avoid">
                 {/* Cabecera del reporte */}
                 <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 text-white">
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <FileText size={20} />
-                      <div>
-                        <h2 className="text-lg font-bold">{reporte.cliente}</h2>
-                        <p className="text-sm text-blue-100">RUC: {reporte.ruc}</p>
-                      </div>
+                    <div>
+                      <h2 className="text-xl font-bold">Documento Contable #{reporte.id}</h2>
+                      <p className="text-blue-100 text-sm">{formatearFecha(reporte.created_at)}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getTipoColor(reporte.tipo_producto)} bg-opacity-90`}>
-                      {getTipoLabel(reporte.tipo_producto)}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getTipoColor(reporte.tipo_producto)}`}>
+                        {getTipoLabel(reporte.tipo_producto)}
+                      </span>
+                      <button
+                        onClick={() => handleImprimir(reporte)}
+                        className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all"
+                        title="Imprimir reporte"
+                      >
+                        <Printer size={16} className="text-white" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="p-6 space-y-4">
+                  {/* Cliente */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <User size={16} className="text-blue-500" />
+                      <span className="font-medium text-slate-700">Cliente:</span>
+                      <span className="text-slate-600">{reporte.cliente}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-500">RUC:</span>
+                      <span className="font-mono text-sm">{reporte.ruc}</span>
+                    </div>
+                  </div>
+
                   {/* Servicios */}
                   {servicios.length > 0 && (
                     <div>
-                      <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-3">
+                      <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                         <Package size={16} className="text-blue-500" />
                         Servicios Contratados
                       </h3>
-                      <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {servicios.map((servicio, idx) => (
-                          <div key={idx} className="flex items-start text-sm border-b border-slate-200 last:border-0 pb-2 last:pb-0">
-                            <ChevronRight size={14} className="text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <span className="font-medium text-slate-800">{servicio.nombre}</span>
-                              {servicio.categoria && (
-                                <span className="text-slate-600 ml-2">({servicio.categoria})</span>
-                              )}
-                              <div className="text-xs text-slate-500 mt-1">
-                                {servicio.producto} - Registro: {servicio.sanitario}
-                              </div>
+                          <div key={idx} className="bg-slate-50 p-3 rounded-lg text-sm">
+                            <span className="font-medium text-slate-700">{servicio.nombre}</span>
+                            {servicio.categoria && (
+                              <span className="text-slate-500 ml-2">({servicio.categoria})</span>
+                            )}
+                            <div className="text-xs text-slate-500 mt-1">
+                              {servicio.producto} - Reg: {servicio.sanitario}
                             </div>
                           </div>
                         ))}
@@ -321,78 +526,47 @@ function Reportes() {
                   )}
 
                   {/* Derecho de Trámite */}
-                  {reporte.derecho_tramite_monto && parseFloat(reporte.derecho_tramite_monto) > 0 && (
-                    <div className="border-t border-slate-200 pt-4">
+                  {(reporte.derecho_tramite_monto || reporte.derecho_tramite_cpb) && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
                       <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <DollarSign size={16} className="text-emerald-600" />
-                          <span className="font-semibold text-slate-700">Derecho de Trámite (Tasa de Salud)</span>
+                        <span className="font-medium text-slate-700">Derecho de Trámite (Tasa de Salud)</span>
+                        <div className="flex items-center gap-4">
+                          {reporte.derecho_tramite_cpb && (
+                            <span className="text-sm text-slate-500">
+                              <span className="font-medium">CPB N°:</span> {reporte.derecho_tramite_cpb}
+                            </span>
+                          )}
+                          {reporte.derecho_tramite_monto && (
+                            <span className="font-semibold text-blue-600">
+                              {formatCurrency(reporte.derecho_tramite_monto)}
+                            </span>
+                          )}
                         </div>
-                        <span className="text-lg font-bold text-emerald-600">
-                          {formatCurrency(reporte.derecho_tramite_monto)}
-                        </span>
                       </div>
-                      {reporte.derecho_tramite_cpb && (
-                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                          <FileCheck size={12} />
-                          CPB Nº: {reporte.derecho_tramite_cpb}
-                        </p>
-                      )}
                     </div>
                   )}
 
                   {/* PDF Adjunto */}
                   {reporte.pdf_adjunto && (
-                    <div className="border-t border-slate-200 pt-4">
-                      <a 
+                    <div className="mt-4">
+                      <a
                         href={`/uploads/documentos/${reporte.pdf_adjunto}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
                       >
-                        <Eye size={16} />
-                        <span>Ver documento PDF adjunto</span>
-                        <Download size={14} className="ml-1" />
+                        <FileText size={14} />
+                        Ver PDF adjunto
+                        <Download size={12} />
                       </a>
                     </div>
                   )}
-
-                  {/* Fecha */}
-                  <div className="border-t border-slate-200 pt-3 flex items-center gap-2 text-xs text-slate-500">
-                    <Calendar size={12} />
-                    <span>Fecha de registro: {formatearFecha(reporte.created_at)}</span>
-                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
-      {/* Estilos de impresión */}
-      <style jsx>{`
-        @media print {
-          body {
-            background: white;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .animate-fadeIn {
-            animation: none;
-          }
-          .bg-white {
-            box-shadow: none !important;
-            border: 1px solid #e2e8f0 !important;
-          }
-          .bg-gradient-to-r {
-            background: #2563eb !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-        }
-      `}</style>
     </div>
   );
 }

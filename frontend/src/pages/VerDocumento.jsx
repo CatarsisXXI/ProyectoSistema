@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, User, Package, DollarSign, FileText, Download, Eye } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Package, DollarSign, FileText, Download, Eye, Printer } from 'lucide-react';
 
 function VerDocumento() {
   const { id } = useParams();
@@ -79,6 +79,343 @@ function VerDocumento() {
     return total.toFixed(2);
   };
 
+  const handleImprimir = () => {
+    const ventanaImpresion = window.open('', '_blank');
+    const contenidoHTML = generarHTMLImpresion();
+    ventanaImpresion.document.write(contenidoHTML);
+    ventanaImpresion.document.close();
+    ventanaImpresion.onload = () => {
+      ventanaImpresion.print();
+    };
+  };
+
+  const generarHTMLImpresion = () => {
+    if (!documento) return '';
+
+    const estilos = `
+      <style>
+        body {
+          font-family: 'Inter', system-ui, -apple-system, sans-serif;
+          margin: 0;
+          padding: 20px;
+          background: white;
+          color: #1e293b;
+        }
+        .print-container {
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 2px solid #2563eb;
+          padding-bottom: 15px;
+          margin-bottom: 20px;
+        }
+        .header h1 {
+          font-size: 24px;
+          font-weight: bold;
+          color: #1e293b;
+          margin: 0;
+        }
+        .header .subtitle {
+          color: #64748b;
+          font-size: 14px;
+        }
+        .empresa-info {
+          text-align: right;
+          font-size: 14px;
+          color: #475569;
+        }
+        .seccion {
+          margin-bottom: 25px;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .seccion-titulo {
+          background: #f1f5f9;
+          padding: 10px 15px;
+          font-weight: 600;
+          color: #0f172a;
+          border-bottom: 1px solid #cbd5e1;
+        }
+        .seccion-contenido {
+          padding: 15px;
+          background: white;
+        }
+        .grid-2 {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+        }
+        .grid-3 {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 15px;
+        }
+        .campo {
+          margin-bottom: 10px;
+        }
+        .campo-label {
+          font-size: 12px;
+          color: #64748b;
+          margin-bottom: 2px;
+        }
+        .campo-valor {
+          font-weight: 500;
+          color: #0f172a;
+          font-size: 14px;
+        }
+        .badge {
+          display: inline-block;
+          padding: 4px 8px;
+          border-radius: 9999px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+        .badge-blue {
+          background: #dbeafe;
+          color: #1e40af;
+        }
+        .badge-green {
+          background: #dcfce7;
+          color: #166534;
+        }
+        .table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .table th {
+          text-align: left;
+          padding: 8px;
+          background: #f8fafc;
+          font-size: 12px;
+          font-weight: 600;
+          color: #475569;
+        }
+        .table td {
+          padding: 8px;
+          border-bottom: 1px solid #e2e8f0;
+          font-size: 13px;
+        }
+        .footer {
+          margin-top: 30px;
+          text-align: center;
+          font-size: 12px;
+          color: #94a3b8;
+          border-top: 1px solid #e2e8f0;
+          padding-top: 15px;
+        }
+        .total {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: #f0f9ff;
+          padding: 15px;
+          border-radius: 8px;
+          margin-top: 20px;
+          font-weight: bold;
+        }
+        .total-label {
+          font-size: 18px;
+          color: #0f172a;
+        }
+        .total-valor {
+          font-size: 24px;
+          color: #2563eb;
+        }
+        .cpb-line {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px dashed #cbd5e1;
+        }
+      </style>
+    `;
+
+    const servicios = () => {
+      if (documento.tipo_producto === 'farmaceutico') {
+        return `
+          <div class="grid-2">
+            <div class="campo">
+              <div class="campo-label">Categoría 1</div>
+              <div class="campo-valor">${documento.categoria1 ? 'Sí' : 'No'}</div>
+            </div>
+            <div class="campo">
+              <div class="campo-label">Categoría 2</div>
+              <div class="campo-valor">${documento.categoria2 ? 'Sí' : 'No'}</div>
+            </div>
+          </div>
+          ${['cambio_mayor', 'cambio_menor', 'inscripcion', 'renovacion', 'traduccion'].map(item => {
+            if (!documento[item]) return '';
+            return `
+              <div class="grid-2" style="margin-top:10px;">
+                <div class="campo">
+                  <div class="campo-label">${item.replace(/_/g, ' ')}</div>
+                  <div class="campo-valor">${documento[`${item}_costo`] ? `${documento[`${item}_moneda`] === 'soles' ? 'S/' : '$'} ${parseFloat(documento[`${item}_costo`]).toFixed(2)}` : '-'}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        `;
+      } else if (documento.tipo_producto === 'dispositivo_medico') {
+        return [1,2,3,4].map(num => {
+          if (!documento[`clase${num}`]) return '';
+          return `
+            <div class="grid-2" style="margin-top:10px;">
+              <div class="campo">
+                <div class="campo-label">Clase ${num}</div>
+                <div class="campo-valor">${documento[`clase${num}_costo`] ? `${documento[`clase${num}_moneda`] === 'soles' ? 'S/' : '$'} ${parseFloat(documento[`clase${num}_costo`]).toFixed(2)}` : '-'}</div>
+              </div>
+            </div>
+          `;
+        }).join('') + (documento.traduccion ? `
+          <div class="grid-2" style="margin-top:10px;">
+            <div class="campo">
+              <div class="campo-label">Traducción</div>
+              <div class="campo-valor">${documento.traduccion_costo ? `${documento.traduccion_moneda === 'soles' ? 'S/' : '$'} ${parseFloat(documento.traduccion_costo).toFixed(2)}` : '-'}</div>
+            </div>
+          </div>
+        ` : '');
+      } else if (documento.tipo_producto === 'biologico') {
+        return [
+          { key: 'vaccines_inmunologicos', label: 'Vacunas e Inmunológicos' },
+          { key: 'otros_biologicos', label: 'Otros Biológicos' },
+          { key: 'bioequivalente', label: 'Bioequivalente' },
+          { key: 'biotecnologico', label: 'Biotecnológico' },
+          { key: 'traduccion', label: 'Traducción' }
+        ].map(item => {
+          if (!documento[item.key]) return '';
+          return `
+            <div class="grid-2" style="margin-top:10px;">
+              <div class="campo">
+                <div class="campo-label">${item.label}</div>
+                <div class="campo-valor">${documento[`${item.key}_costo`] ? `${documento[`${item.key}_moneda`] === 'soles' ? 'S/' : '$'} ${parseFloat(documento[`${item.key}_costo`]).toFixed(2)}` : '-'}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    };
+
+    const total = calcularTotal();
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Documento Contable #${documento.id}</title>
+          ${estilos}
+        </head>
+        <body>
+          <div class="print-container">
+            <div class="header">
+              <div>
+                <h1>Documento Contable #${documento.id}</h1>
+                <div class="subtitle">${getTipoLabel(documento.tipo_producto)}</div>
+              </div>
+              <div class="empresa-info">
+                <div><strong>SGR</strong></div>
+                <div>Sistema de Gestión de Reportes</div>
+                <div>${formatearFechaHora(documento.created_at)}</div>
+              </div>
+            </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">Cliente</div>
+              <div class="seccion-contenido">
+                <div class="grid-2">
+                  <div class="campo">
+                    <div class="campo-label">Razón Social</div>
+                    <div class="campo-valor">${documento.cliente_nombre || '-'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">RUC</div>
+                    <div class="campo-valor">${documento.cliente_ruc || '-'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">Producto</div>
+              <div class="seccion-contenido">
+                <div class="grid-2">
+                  <div class="campo">
+                    <div class="campo-label">Nombre</div>
+                    <div class="campo-valor">${documento.producto_nombre || '-'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Registro Sanitario</div>
+                    <div class="campo-valor">${documento.producto_registro || '-'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">Servicios y Costos</div>
+              <div class="seccion-contenido">
+                ${servicios()}
+                ${(documento.derecho_tramite_cpb || documento.derecho_tramite_monto) ? `
+                  <div class="cpb-line">
+                    <div><strong>Derecho de Trámite</strong></div>
+                    <div style="display: flex; gap: 20px;">
+                      ${documento.derecho_tramite_cpb ? `<span><span style="color:#64748b;">CPB N°:</span> ${documento.derecho_tramite_cpb}</span>` : ''}
+                      ${documento.derecho_tramite_monto ? `<span><strong>S/ ${parseFloat(documento.derecho_tramite_monto).toFixed(2)}</strong></span>` : ''}
+                    </div>
+                  </div>
+                ` : ''}
+                <div class="total">
+                  <span class="total-label">TOTAL</span>
+                  <span class="total-valor">S/ ${total}</span>
+                </div>
+              </div>
+            </div>
+
+            ${documento.pdf_adjunto ? `
+              <div class="seccion">
+                <div class="seccion-titulo">Documento Adjunto</div>
+                <div class="seccion-contenido">
+                  <div class="campo">
+                    <div class="campo-label">Archivo PDF</div>
+                    <div class="campo-valor">${documento.pdf_adjunto}</div>
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+
+            <div class="seccion">
+              <div class="seccion-titulo">Información del Registro</div>
+              <div class="seccion-contenido">
+                <div class="grid-2">
+                  <div class="campo">
+                    <div class="campo-label">Fecha de creación</div>
+                    <div class="campo-valor">${formatearFechaHora(documento.created_at)}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Registrado por</div>
+                    <div class="campo-valor">${documento.usuario_nombre || 'Usuario'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footer">
+              Documento generado por SGR - Sistema de Gestión de Reportes
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+    return html;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -103,7 +440,7 @@ function VerDocumento() {
 
   return (
     <div className="animate-fadeIn max-w-6xl mx-auto">
-      {/* Encabezado con botón de volver */}
+      {/* Encabezado con botones */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
@@ -119,16 +456,25 @@ function VerDocumento() {
             </p>
           </div>
         </div>
-        <Link
-          to={`/documentos/editar/${documento.id}`}
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98]"
-        >
-          <Package size={18} />
-          <span>Editar</span>
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={handleImprimir}
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98]"
+          >
+            <Printer size={18} />
+            <span>Imprimir</span>
+          </button>
+          <Link
+            to={`/documentos/editar/${documento.id}`}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98]"
+          >
+            <Package size={18} />
+            <span>Editar</span>
+          </Link>
+        </div>
       </div>
 
-      {/* Contenido del documento */}
+      {/* Contenido del documento (vista previa) */}
       <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
         {/* Cabecera */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 text-white">
@@ -283,15 +629,21 @@ function VerDocumento() {
                 </div>
               )}
 
-              {/* Derecho de trámite */}
+              {/* Derecho de trámite con CPB y monto */}
               {(documento.derecho_tramite_cpb || documento.derecho_tramite_monto) && (
                 <div className="mt-4 pt-4 border-t border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Derecho de Trámite (Tasa de Salud)</span>
-                    <div className="text-right">
-                      <span className="text-sm text-slate-500 mr-2">{documento.derecho_tramite_cpb || '-'}</span>
+                    <div className="flex items-center gap-4">
+                      {documento.derecho_tramite_cpb && (
+                        <div className="text-sm text-slate-500 flex items-center gap-1">
+                          <span className="font-medium">CPB N°:</span> {documento.derecho_tramite_cpb}
+                        </div>
+                      )}
                       {documento.derecho_tramite_monto && (
-                        <span className="font-semibold">S/ {parseFloat(documento.derecho_tramite_monto).toFixed(2)}</span>
+                        <div className="font-semibold text-blue-600">
+                          S/ {parseFloat(documento.derecho_tramite_monto).toFixed(2)}
+                        </div>
                       )}
                     </div>
                   </div>
