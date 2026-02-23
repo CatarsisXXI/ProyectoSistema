@@ -4,8 +4,8 @@ import axios from 'axios';
 import { Save, ArrowLeft, Loader2, Phone, Mail, FileText } from 'lucide-react';
 
 // Opciones definidas en el backend
-const CATEGORIAS = ['drogueria', 'botica', 'clinica', 'hospital', 'farmacia'];
-const SOLICITUDES = ['registros', 'direccion tecnica', 'almacenamiento BPA', 'almacenamiento sin BPA', 'otros'];
+const CATEGORIAS = ['Drogueria', 'Botica', 'Clinica', 'Hospital', 'Farmacia'];
+const SOLICITUDES = ['Registros', 'Direccion Técnica', 'Almacenamiento BPA', 'Almacenamiento sin BPA', 'Otros'];
 
 function EditarCliente() {
   const { id } = useParams();
@@ -31,7 +31,7 @@ function EditarCliente() {
   });
 
   // Determina si se debe mostrar el campo de texto para 'otros'
-  const mostrarOtros = formData.solicitud.includes('otros');
+  const mostrarOtros = formData.solicitud.includes('Otros');
 
   useEffect(() => {
     fetchCliente();
@@ -114,7 +114,7 @@ function EditarCliente() {
       ...prev,
       solicitud: newSolicitud,
       // Si se desmarca 'otros', limpiamos el campo
-      otros_solicitud: (sol === 'otros' && prev.solicitud.includes(sol)) ? '' : prev.otros_solicitud
+      otros_solicitud: (sol === 'Otros' && prev.solicitud.includes(sol)) ? '' : prev.otros_solicitud
     }));
   };
 
