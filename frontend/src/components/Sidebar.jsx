@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import {
@@ -18,9 +18,11 @@ import {
 
 function Sidebar() {
   const { usuario, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
+    navigate('/login'); // Redirige al login después de cerrar sesión
   };
 
   return (

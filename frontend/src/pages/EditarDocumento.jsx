@@ -1,17 +1,19 @@
 import { useState, useEffect, useContext } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { Save, ArrowLeft, Calendar, User, AlertCircle, Package, Upload, DollarSign, FileText } from 'lucide-react';
+import { Save, ArrowLeft, Loader2, Calendar, User, AlertCircle, Package, DollarSign, FileText, Upload } from 'lucide-react';
 
-function NuevoDocumento() {
+function EditarDocumento() {
+  const { id } = useParams();
   const { usuario } = useContext(AuthContext);
   const navigate = useNavigate();
-  const location = useLocation();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [tipoProducto, setTipoProducto] = useState('farmaceutico');
+  const [success, setSuccess] = useState('');
   
+  const [tipoProducto, setTipoProducto] = useState('farmaceutico');
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
   const [busquedaRUC, setBusquedaRUC] = useState('');
@@ -19,6 +21,7 @@ function NuevoDocumento() {
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [busquedaProducto, setBusquedaProducto] = useState('');
   const [pdfAdjunto, setPdfAdjunto] = useState(null);
+  const [pdfActual, setPdfActual] = useState('');
   const [mostrarClientesDropdown, setMostrarClientesDropdown] = useState(false);
   const [mostrarProductosDropdown, setMostrarProductosDropdown] = useState(false);
 
@@ -74,33 +77,112 @@ function NuevoDocumento() {
     derecho_tramite_monto: ''
   });
 
+  const [metadata, setMetadata] = useState({
+    created_at: '',
+    usuario_nombre: ''
+  });
+
   useEffect(() => {
     fetchClientes();
-  }, []);
+    fetchDocumento();
+  }, [id]);
 
   useEffect(() => {
-    fetchProductos();
+    if (tipoProducto) {
+      fetchProductos();
+    }
   }, [tipoProducto]);
 
-  // Si viene de OrdenesServicio con datos de orden
-  useEffect(() => {
-    if (location.state?.ordenData) {
-      const { ordenData } = location.state;
-      if (ordenData.clienteInfo) {
-        setClienteSeleccionado(ordenData.clienteInfo);
-        setFormData(prev => ({ ...prev, cliente_id: ordenData.clienteInfo.id }));
-        setBusquedaRUC(ordenData.clienteInfo.ruc);
-      }
-      if (ordenData.productoInfo) {
-        setProductoSeleccionado(ordenData.productoInfo);
-        setFormData(prev => ({ ...prev, producto_id: ordenData.productoInfo.id }));
-        setBusquedaProducto(ordenData.productoInfo.nombre_producto);
-      }
-      if (ordenData.tipo_producto) {
-        setTipoProducto(ordenData.tipo_producto);
-      }
+  const fetchDocumento = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`/api/documentos/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = res.data;
+
+      setTipoProducto(data.tipo_producto);
+      setPdfActual(data.pdf_adjunto || '');
+
+      // Cliente
+      setClienteSeleccionado({
+        id: data.cliente_id,
+        razon_social: data.cliente_nombre,
+        ruc: data.cliente_ruc
+      });
+      setBusquedaRUC(data.cliente_ruc);
+
+      // Producto
+      setProductoSeleccionado({
+        id: data.producto_id,
+        nombre_producto: data.producto_nombre,
+        codigo_registro: data.producto_registro
+      });
+      setBusquedaProducto(data.producto_nombre);
+
+      setMetadata({
+        created_at: data.created_at,
+        usuario_nombre: data.usuario_nombre || 'Usuario'
+      });
+
+      setFormData({
+        cliente_id: data.cliente_id,
+        producto_id: data.producto_id,
+        // Farmacéutico
+        categoria1: Boolean(data.categoria1),
+        categoria2: Boolean(data.categoria2),
+        cambio_mayor: Boolean(data.cambio_mayor),
+        cambio_mayor_costo: data.cambio_mayor_costo || '',
+        cambio_mayor_moneda: data.cambio_mayor_moneda || 'soles',
+        cambio_menor: Boolean(data.cambio_menor),
+        cambio_menor_costo: data.cambio_menor_costo || '',
+        cambio_menor_moneda: data.cambio_menor_moneda || 'soles',
+        inscripcion: Boolean(data.inscripcion),
+        inscripcion_costo: data.inscripcion_costo || '',
+        inscripcion_moneda: data.inscripcion_moneda || 'soles',
+        renovacion: Boolean(data.renovacion),
+        renovacion_costo: data.renovacion_costo || '',
+        renovacion_moneda: data.renovacion_moneda || 'soles',
+        traduccion: Boolean(data.traduccion),
+        traduccion_costo: data.traduccion_costo || '',
+        traduccion_moneda: data.traduccion_moneda || 'soles',
+        // Dispositivos
+        clase1: Boolean(data.clase1),
+        clase1_costo: data.clase1_costo || '',
+        clase1_moneda: data.clase1_moneda || 'soles',
+        clase2: Boolean(data.clase2),
+        clase2_costo: data.clase2_costo || '',
+        clase2_moneda: data.clase2_moneda || 'soles',
+        clase3: Boolean(data.clase3),
+        clase3_costo: data.clase3_costo || '',
+        clase3_moneda: data.clase3_moneda || 'soles',
+        clase4: Boolean(data.clase4),
+        clase4_costo: data.clase4_costo || '',
+        clase4_moneda: data.clase4_moneda || 'soles',
+        // Biológicos
+        vaccines_inmunologicos: Boolean(data.vaccines_inmunologicos),
+        vaccines_inmunologicos_costo: data.vaccines_inmunologicos_costo || '',
+        vaccines_inmunologicos_moneda: data.vaccines_inmunologicos_moneda || 'soles',
+        otros_biologicos: Boolean(data.otros_biologicos),
+        otros_biologicos_costo: data.otros_biologicos_costo || '',
+        otros_biologicos_moneda: data.otros_biologicos_moneda || 'soles',
+        bioequivalente: Boolean(data.bioequivalente),
+        bioequivalente_costo: data.bioequivalente_costo || '',
+        bioequivalente_moneda: data.bioequivalente_moneda || 'soles',
+        biotecnologico: Boolean(data.biotecnologico),
+        biotecnologico_costo: data.biotecnologico_costo || '',
+        biotecnologico_moneda: data.biotecnologico_moneda || 'soles',
+        // Derecho de trámite
+        derecho_tramite_cpb: data.derecho_tramite_cpb || '',
+        derecho_tramite_monto: data.derecho_tramite_monto || ''
+      });
+    } catch (err) {
+      setError('Error al cargar los datos del documento');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-  }, [location.state]);
+  };
 
   const fetchClientes = async () => {
     try {
@@ -190,13 +272,15 @@ function NuevoDocumento() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
     setError('');
-    setLoading(true);
+    setSuccess('');
 
     try {
       const token = localStorage.getItem('token');
-      let pdfFilename = '';
+      let pdfFilename = pdfActual;
 
+      // Si hay un nuevo PDF, subirlo
       if (pdfAdjunto) {
         const formDataPdf = new FormData();
         formDataPdf.append('pdf', pdfAdjunto);
@@ -210,18 +294,21 @@ function NuevoDocumento() {
         pdfFilename = uploadRes.data.filename;
       }
 
-      await axios.post('/api/documentos', {
+      await axios.put(`/api/documentos/${id}`, {
         tipo_producto: tipoProducto,
         ...formData,
         pdf_adjunto: pdfFilename
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      navigate('/documentos');
+      setSuccess('Documento actualizado correctamente');
+      setTimeout(() => {
+        navigate('/documentos');
+      }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al crear documento');
+      setError(err.response?.data?.error || 'Error al actualizar documento');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -234,31 +321,43 @@ function NuevoDocumento() {
     p.nombre_producto?.toLowerCase().includes(busquedaProducto.toLowerCase())
   );
 
-  const fechaActual = new Date().toLocaleDateString('es-PE', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const formatearFecha = (fechaISO) => {
+    if (!fechaISO) return '-';
+    const fecha = new Date(fechaISO);
+    return fecha.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-medium">Cargando documento...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fadeIn max-w-6xl mx-auto">
-      {/* Encabezado con botón de volver */}
       <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={() => navigate('/documentos')}
+        <Link
+          to="/documentos"
           className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
         >
           <ArrowLeft size={20} className="text-slate-600" />
-        </button>
+        </Link>
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">Nuevo Documento Contable</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Crear nuevo documento contable
-          </p>
+          <h1 className="text-3xl font-bold text-slate-800">Editar Documento Contable</h1>
+          <p className="text-slate-500 text-sm mt-1">Modifica los datos del documento</p>
         </div>
       </div>
 
-      {/* Información de fecha y usuario */}
+      {/* Información de registro (solo lectura) */}
       <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -267,19 +366,19 @@ function NuevoDocumento() {
               <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                value={fechaActual}
+                value={formatearFecha(metadata.created_at)}
                 disabled
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Usuario</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Registrado por</label>
             <div className="relative">
               <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                value={usuario?.nombre_completo || ''}
+                value={metadata.usuario_nombre}
                 disabled
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed"
               />
@@ -292,6 +391,12 @@ function NuevoDocumento() {
         <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-sm flex items-center gap-2">
           <AlertCircle size={18} />
           {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm flex items-center gap-2">
+          <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          {success} Redirigiendo...
         </div>
       )}
 
@@ -320,7 +425,7 @@ function NuevoDocumento() {
             </div>
           </div>
 
-          {/* Buscar Cliente */}
+          {/* Cliente */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -379,7 +484,7 @@ function NuevoDocumento() {
             </div>
           </div>
 
-          {/* Buscar Producto */}
+          {/* Producto */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -688,6 +793,11 @@ function NuevoDocumento() {
                   <Upload size={12} /> {pdfAdjunto.name}
                 </p>
               )}
+              {pdfActual && !pdfAdjunto && (
+                <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                  <FileText size={12} /> PDF actual: {pdfActual}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -733,27 +843,26 @@ function NuevoDocumento() {
 
         {/* Botones de acción */}
         <div className="flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={() => navigate('/documentos')}
+          <Link
+            to="/documentos"
             className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
           >
             Cancelar
-          </button>
+          </Link>
           <button
             type="submit"
-            disabled={loading || !formData.cliente_id || !formData.producto_id}
+            disabled={saving || !formData.cliente_id || !formData.producto_id}
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-[0.98]"
           >
-            {loading ? (
+            {saving ? (
               <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <Loader2 size={18} className="animate-spin" />
                 Guardando...
               </>
             ) : (
               <>
                 <Save size={18} />
-                Guardar Documento
+                Guardar Cambios
               </>
             )}
           </button>
@@ -763,4 +872,4 @@ function NuevoDocumento() {
   );
 }
 
-export default NuevoDocumento;
+export default EditarDocumento;

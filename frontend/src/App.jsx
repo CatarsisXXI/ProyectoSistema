@@ -20,6 +20,8 @@ import EditarOrden from './pages/EditarOrden';
 import VerOrden from './pages/VerOrden';
 import DocumentosContables from './pages/DocumentosContables';
 import NuevoDocumento from './pages/NuevoDocumento';
+import EditarDocumento from './pages/EditarDocumento'; 
+import VerDocumento from './pages/VerDocumento';
 import Reportes from './pages/Reportes';
 import Sidebar from './components/Sidebar';
 
@@ -68,6 +70,8 @@ function PrivateRoutes() {
           <Route path="/ordenes/imprimir/:id" element={<VerOrden />} />
           <Route path="/documentos" element={<DocumentosContables />} />
           <Route path="/documentos/nuevo" element={<NuevoDocumento />} />
+          <Route path="/documentos/editar/:id" element={<EditarDocumento />} />
+          <Route path="/documentos/ver/:id" element={<VerDocumento />} />
           <Route path="/reportes" element={<Reportes />} />
         </Routes>
       </main>
