@@ -1,6 +1,18 @@
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import {
+  Users,
+  Pill,
+  Stethoscope,
+  FlaskConical,
+  ShoppingCart,
+  FileText,
+  Activity,
+  TrendingUp,
+  Package,
+  ClipboardList,
+} from 'lucide-react';
 
 function Dashboard() {
   const { usuario } = useContext(AuthContext);
@@ -12,12 +24,14 @@ function Dashboard() {
     ordenes: 0,
     documentos: 0
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
   }, []);
 
   const fetchStats = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
@@ -41,101 +55,189 @@ function Dashboard() {
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Configuración de las tarjetas para mantener el código más limpio
+  const cards = [
+    {
+      title: 'Clientes',
+      value: stats.clientes,
+      icon: Users,
+      color: 'blue',
+      bg: 'bg-blue-50',
+      text: 'text-blue-600',
+      iconColor: 'text-blue-500',
+      description: 'Total de clientes registrados'
+    },
+    {
+      title: 'Productos Farmacéuticos',
+      value: stats.farmaceuticos,
+      icon: Pill,
+      color: 'emerald',
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-600',
+      iconColor: 'text-emerald-500',
+      description: 'Medicamentos y fármacos'
+    },
+    {
+      title: 'Dispositivos Médicos',
+      value: stats.dispositivos,
+      icon: Stethoscope,
+      color: 'cyan',
+      bg: 'bg-cyan-50',
+      text: 'text-cyan-600',
+      iconColor: 'text-cyan-500',
+      description: 'Equipos e instrumentos'
+    },
+    {
+      title: 'Productos Biológicos',
+      value: stats.biologicos,
+      icon: FlaskConical,
+      color: 'purple',
+      bg: 'bg-purple-50',
+      text: 'text-purple-600',
+      iconColor: 'text-purple-500',
+      description: 'Vacunas, sueros, etc.'
+    },
+    {
+      title: 'Órdenes de Servicio',
+      value: stats.ordenes,
+      icon: ShoppingCart,
+      color: 'amber',
+      bg: 'bg-amber-50',
+      text: 'text-amber-600',
+      iconColor: 'text-amber-500',
+      description: 'Órdenes activas y completadas'
+    },
+    {
+      title: 'Documentos Contables',
+      value: stats.documentos,
+      icon: FileText,
+      color: 'indigo',
+      bg: 'bg-indigo-50',
+      text: 'text-indigo-600',
+      iconColor: 'text-indigo-500',
+      description: 'Facturas, reportes, etc.'
+    }
+  ];
+
   return (
-    <div className="fade-in">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
-        <p className="text-text-secondary">Bienvenido, {usuario?.nombre_completo}</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-text-secondary text-sm">Clientes</p>
-              <p className="text-3xl font-bold text-primary">{stats.clientes}</p>
-            </div>
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
+    <div className="min-h-screen bg-slate-50 p-6">
+      {/* Encabezado con saludo y resumen */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
+              ¡Hola, {usuario?.nombre_completo?.split(' ')[0] || 'Usuario'}!
+            </h1>
+            <p className="text-slate-500 mt-1 flex items-center gap-2">
+              <Activity size={16} className="text-blue-500" />
+              <span>Bienvenido al panel de control del Sistema de Gestión de Reportes</span>
+            </p>
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-text-secondary text-sm">Productos Farmacéuticos</p>
-              <p className="text-3xl font-bold text-green-600">{stats.farmaceuticos}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-text-secondary text-sm">Dispositivos Médicos</p>
-              <p className="text-3xl font-bold text-blue-600">{stats.dispositivos}</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-text-secondary text-sm">Productos Biológicos</p>
-              <p className="text-3xl font-bold text-purple-600">{stats.biologicos}</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-text-secondary text-sm">Órdenes de Servicio</p>
-              <p className="text-3xl font-bold text-orange-600">{stats.ordenes}</p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-text-secondary text-sm">Documentos Contables</p>
-              <p className="text-3xl font-bold text-indigo-600">{stats.documentos}</p>
-            </div>
-            <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+            <TrendingUp size={20} className="text-blue-500" />
+            <span className="text-sm font-medium text-slate-600">
+              {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
           </div>
         </div>
       </div>
+
+      {/* Grid de tarjetas estadísticas */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 animate-pulse">
+              <div className="flex items-start justify-between">
+                <div className="space-y-3 flex-1">
+                  <div className="h-4 bg-slate-200 rounded w-24"></div>
+                  <div className="h-8 bg-slate-300 rounded w-16"></div>
+                  <div className="h-3 bg-slate-200 rounded w-32"></div>
+                </div>
+                <div className="w-12 h-12 bg-slate-200 rounded-xl"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {cards.map((card, index) => (
+            <div
+              key={index}
+              className="group bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md hover:border-slate-200 transition-all duration-200 hover:-translate-y-1"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500 mb-1">{card.title}</p>
+                  <p className={`text-3xl font-bold ${card.text} mb-1`}>{card.value}</p>
+                  <p className="text-xs text-slate-400">{card.description}</p>
+                </div>
+                <div className={`${card.bg} p-3 rounded-xl group-hover:scale-110 transition-transform duration-200`}>
+                  <card.icon size={24} className={card.iconColor} />
+                </div>
+              </div>
+              {/* Barra de progreso simulada (opcional, solo para decoración) */}
+              <div className="mt-4 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full ${card.bg.replace('50', '400')} rounded-full`} 
+                  style={{ width: `${Math.min(100, (card.value / 100) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Sección de accesos rápidos o actividad reciente (opcional para mejorar UX) */}
+      {!loading && (
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
+              <ClipboardList size={20} className="text-blue-500" />
+              Resumen rápido
+            </h2>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Total productos:</span>
+                <span className="font-semibold text-slate-700">
+                  {stats.farmaceuticos + stats.dispositivos + stats.biologicos}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Total órdenes + documentos:</span>
+                <span className="font-semibold text-slate-700">
+                  {stats.ordenes + stats.documentos}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Clientes activos:</span>
+                <span className="font-semibold text-slate-700">{stats.clientes}</span>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
+              <Package size={20} className="text-blue-500" />
+              Acciones rápidas
+            </h2>
+            <div className="flex flex-wrap gap-3">
+              <button className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-100 hover:shadow-sm transition-all active:scale-95">
+                Nuevo Cliente
+              </button>
+              <button className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-sm font-medium hover:bg-emerald-100 hover:shadow-sm transition-all active:scale-95">
+                Nueva Orden
+              </button>
+              <button className="px-4 py-2 bg-amber-50 text-amber-600 rounded-xl text-sm font-medium hover:bg-amber-100 hover:shadow-sm transition-all active:scale-95">
+                Nuevo Documento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

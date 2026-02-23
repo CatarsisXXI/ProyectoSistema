@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Clientes from './pages/Clientes';
 import NuevoCliente from './pages/NuevoCliente';
+import EditarCliente from './pages/EditarCliente';
 import ProductosFarmaceuticos from './pages/ProductosFarmaceuticos';
 import NuevoProductoFarmaceutico from './pages/NuevoProductoFarmaceutico';
 import DispositivosMedicos from './pages/DispositivosMedicos';
@@ -45,6 +46,7 @@ function PrivateRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/clientes/nuevo" element={<NuevoCliente />} />
+          <Route path="/clientes/editar/:id" element={<EditarCliente />} />
           <Route path="/productos/farmaceuticos" element={<ProductosFarmaceuticos />} />
           <Route path="/productos/farmaceuticos/nuevo" element={<NuevoProductoFarmaceutico />} />
           <Route path="/productos/dispositivos" element={<DispositivosMedicos />} />
