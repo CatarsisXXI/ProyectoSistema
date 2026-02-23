@@ -87,6 +87,52 @@ router.post('/farmaceuticos', async (req, res) => {
   }
 });
 
+// ==================== PRODUCTOS FARMACÉUTICOS ====================
+
+// Obtener un producto farmacéutico por ID (usando ruta específica)
+router.get('/farmaceuticos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query('SELECT * FROM productos_farmaceuticos WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error al obtener producto farmacéutico:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Actualizar producto farmacéutico
+router.put('/farmaceuticos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      nombre_producto,
+      categoria1,
+      categoria2,
+      fabricante,
+      pais_origen,
+      pavs
+    } = req.body;
+
+    await pool.query(
+      `UPDATE productos_farmaceuticos SET 
+        nombre_producto = ?, categoria1 = ?, categoria2 = ?,
+        fabricante = ?, pais_origen = ?, pavs = ?
+       WHERE id = ?`,
+      [nombre_producto, categoria1, categoria2, fabricante, pais_origen, pavs, id]
+    );
+
+    const [updated] = await pool.query('SELECT * FROM productos_farmaceuticos WHERE id = ?', [id]);
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error al actualizar producto farmacéutico:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 // ==================== DISPOSITIVOS MÉDICOS ====================
 
 // Obtener todos los dispositivos médicos
@@ -155,6 +201,48 @@ router.post('/dispositivos', async (req, res) => {
     res.status(201).json(nuevoProducto[0]);
   } catch (error) {
     console.error('Error al crear dispositivo médico:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Obtener un dispositivo médico por ID
+router.get('/dispositivos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query('SELECT * FROM dispositivos_medicos WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Dispositivo no encontrado' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error al obtener dispositivo médico:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Actualizar dispositivo médico
+router.put('/dispositivos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      nombre_producto,
+      clase1,
+      clase2,
+      clase3,
+      clase4
+    } = req.body;
+
+    await pool.query(
+      `UPDATE dispositivos_medicos SET 
+        nombre_producto = ?, clase1 = ?, clase2 = ?, clase3 = ?, clase4 = ?
+       WHERE id = ?`,
+      [nombre_producto, clase1, clase2, clase3, clase4, id]
+    );
+
+    const [updated] = await pool.query('SELECT * FROM dispositivos_medicos WHERE id = ?', [id]);
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error al actualizar dispositivo médico:', error);
     res.status(500).json({ error: 'Error del servidor' });
   }
 });

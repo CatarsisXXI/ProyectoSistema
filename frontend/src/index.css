@@ -145,3 +145,20 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* Personalización adicional para react-select */
+.react-select__control {
+  @apply border-slate-300 shadow-sm hover:border-slate-400;
+}
+.react-select__control--is-focused {
+  @apply border-blue-500 ring-2 ring-blue-200;
+}
+.react-select__menu {
+  @apply mt-1 border border-slate-200 shadow-lg rounded-lg overflow-hidden;
+}
+.react-select__option {
+  @apply hover:bg-blue-50;
+}
+.react-select__option--is-selected {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}

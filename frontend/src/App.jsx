@@ -7,8 +7,10 @@ import NuevoCliente from './pages/NuevoCliente';
 import EditarCliente from './pages/EditarCliente';
 import ProductosFarmaceuticos from './pages/ProductosFarmaceuticos';
 import NuevoProductoFarmaceutico from './pages/NuevoProductoFarmaceutico';
+import EditarProductoFarmaceutico from './pages/EditarProductoFarmaceutico';
 import DispositivosMedicos from './pages/DispositivosMedicos';
 import NuevoDispositivoMedico from './pages/NuevoDispositivoMedico';
+import EditarDispositivoMedico from "./pages/EditarDispositivoMedico";
 import ProductosBiologicos from './pages/ProductosBiologicos';
 import NuevoProductoBiologico from './pages/NuevoProductoBiologico';
 import OrdenesServicio from './pages/OrdenesServicio';
@@ -49,8 +51,10 @@ function PrivateRoutes() {
           <Route path="/clientes/editar/:id" element={<EditarCliente />} />
           <Route path="/productos/farmaceuticos" element={<ProductosFarmaceuticos />} />
           <Route path="/productos/farmaceuticos/nuevo" element={<NuevoProductoFarmaceutico />} />
+          <Route path="/productos/farmaceuticos/editar/:id" element={<EditarProductoFarmaceutico />} />
           <Route path="/productos/dispositivos" element={<DispositivosMedicos />} />
           <Route path="/productos/dispositivos/nuevo" element={<NuevoDispositivoMedico />} />
+          <Route path="/productos/dispositivos/editar/:id" element={<EditarDispositivoMedico />} />
           <Route path="/productos/biologicos" element={<ProductosBiologicos />} />
           <Route path="/productos/biologicos/nuevo" element={<NuevoProductoBiologico />} />
           <Route path="/ordenes" element={<OrdenesServicio />} />
