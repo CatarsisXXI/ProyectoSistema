@@ -1,16 +1,19 @@
 import { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { Save, ArrowLeft, Calendar, User, AlertCircle, Package } from 'lucide-react';
+import { Save, ArrowLeft, Loader2, Calendar, User, AlertCircle, Package } from 'lucide-react';
 
-function NuevaOrden() {
+function EditarOrden() {
+  const { id } = useParams();
   const { usuario } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
   const [tipoProducto, setTipoProducto] = useState('farmaceutico');
-  
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
   const [busquedaRUC, setBusquedaRUC] = useState('');
@@ -63,13 +66,104 @@ function NuevaOrden() {
     observaciones: ''
   });
 
-  useEffect(() => {
-    fetchClientes();
-  }, []);
+  const [metadata, setMetadata] = useState({
+    created_at: '',
+    usuario_nombre: ''
+  });
+
+  // Función para formatear fecha ISO a YYYY-MM-DD para input date
+  const formatearFechaInput = (fechaISO) => {
+    if (!fechaISO) return '';
+    const fecha = new Date(fechaISO);
+    if (isNaN(fecha.getTime())) return '';
+    const year = fecha.getFullYear();
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const day = String(fecha.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   useEffect(() => {
-    fetchProductos();
-  }, [tipoProducto]);
+    fetchClientes();
+    fetchOrden();
+  }, [id]);
+
+  const fetchOrden = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`/api/ordenes/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = res.data;
+
+      setTipoProducto(data.tipo_producto);
+      setClienteSeleccionado({
+        id: data.cliente_id,
+        razon_social: data.cliente_nombre,
+        ruc: data.cliente_ruc
+      });
+      setBusquedaRUC(data.cliente_ruc);
+
+      setProductoSeleccionado({
+        id: data.producto_id,
+        nombre_producto: data.producto_nombre,
+        codigo_registro: data.producto_registro
+      });
+      setBusquedaProducto(data.producto_nombre);
+
+      setMetadata({
+        created_at: data.created_at,
+        usuario_nombre: data.usuario_nombre || 'Usuario'
+      });
+
+      setFormData({
+        cliente_id: data.cliente_id,
+        producto_id: data.producto_id,
+        // Farmacéutico
+        categoria1: Boolean(data.categoria1),
+        categoria2: Boolean(data.categoria2),
+        cambio_mayor: Boolean(data.cambio_mayor),
+        cambio_mayor_autorizado: data.cambio_mayor_autorizado || '',
+        cambio_menor: Boolean(data.cambio_menor),
+        cambio_menor_autorizado: data.cambio_menor_autorizado || '',
+        inscripcion: Boolean(data.inscripcion),
+        inscripcion_autorizado: data.inscripcion_autorizado || '',
+        renovacion: Boolean(data.renovacion),
+        renovacion_autorizado: data.renovacion_autorizado || '',
+        traduccion: Boolean(data.traduccion),
+        traduccion_autorizado: data.traduccion_autorizado || '',
+        // Dispositivos
+        clase1: Boolean(data.clase1),
+        clase1_autorizado: data.clase1_autorizado || '',
+        clase2: Boolean(data.clase2),
+        clase2_autorizado: data.clase2_autorizado || '',
+        clase3: Boolean(data.clase3),
+        clase3_autorizado: data.clase3_autorizado || '',
+        clase4: Boolean(data.clase4),
+        clase4_autorizado: data.clase4_autorizado || '',
+        // Biológicos
+        vaccines_immunologicos: Boolean(data.vaccines_immunologicos),
+        vaccines_immunologicos_autorizado: data.vaccines_immunologicos_autorizado || '',
+        otros_biologicos_chk: Boolean(data.otros_biologicos_chk),
+        otros_biologicos_autorizado: data.otros_biologicos_autorizado || '',
+        bioequivalente_chk: Boolean(data.bioequivalente_chk),
+        bioequivalente_autorizado: data.bioequivalente_autorizado || '',
+        biotecnologico_chk: Boolean(data.biotecnologico_chk),
+        biotecnologico_autorizado: data.biotecnologico_autorizado || '',
+        // Comunes
+        cpb_numero: data.cpb_numero || '',
+        monto: data.monto || '',
+        fecha_recepcion: formatearFechaInput(data.fecha_recepcion),
+        fecha_ingreso_vuce: formatearFechaInput(data.fecha_ingreso_vuce),
+        fecha_fin_proceso: formatearFechaInput(data.fecha_fin_proceso),
+        observaciones: data.observaciones || ''
+      });
+    } catch (err) {
+      setError('Error al cargar los datos de la orden');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchClientes = async () => {
     try {
@@ -101,6 +195,12 @@ function NuevaOrden() {
       setProductos([]);
     }
   };
+
+  useEffect(() => {
+    if (tipoProducto) {
+      fetchProductos();
+    }
+  }, [tipoProducto]);
 
   const seleccionarCliente = (cliente) => {
     setClienteSeleccionado(cliente);
@@ -143,50 +243,63 @@ function NuevaOrden() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
     setError('');
-    setLoading(true);
+    setSuccess('');
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('/api/ordenes', {
-        tipo_producto: tipoProducto,
-        ...formData
-      }, {
+      await axios.put(`/api/ordenes/${id}`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      navigate('/ordenes');
+      setSuccess('Orden actualizada correctamente');
+      setTimeout(() => {
+        navigate('/ordenes');
+      }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al crear orden');
+      setError(err.response?.data?.error || 'Error al actualizar orden');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const fechaActual = new Date().toLocaleDateString('es-PE', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const formatearFecha = (fechaISO) => {
+    if (!fechaISO) return '-';
+    const fecha = new Date(fechaISO);
+    return fecha.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-medium">Cargando datos de la orden...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fadeIn max-w-5xl mx-auto">
-      {/* Encabezado con botón de volver */}
       <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={() => navigate('/ordenes')}
+        <Link
+          to="/ordenes"
           className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
         >
           <ArrowLeft size={20} className="text-slate-600" />
-        </button>
+        </Link>
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">Nueva Orden de Servicio</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Crear nueva orden de servicio
-          </p>
+          <h1 className="text-3xl font-bold text-slate-800">Editar Orden de Servicio</h1>
+          <p className="text-slate-500 text-sm mt-1">Modifica los datos de la orden</p>
         </div>
       </div>
 
-      {/* Información de fecha y usuario (solo lectura) */}
+      {/* Información de registro (solo lectura) */}
       <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -195,19 +308,19 @@ function NuevaOrden() {
               <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                value={fechaActual}
+                value={formatearFecha(metadata.created_at)}
                 disabled
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Usuario</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Registrado por</label>
             <div className="relative">
               <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                value={usuario?.nombre_completo || ''}
+                value={metadata.usuario_nombre}
                 disabled
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed"
               />
@@ -220,6 +333,12 @@ function NuevaOrden() {
         <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-sm flex items-center gap-2">
           <AlertCircle size={18} />
           {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm flex items-center gap-2">
+          <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          {success} Redirigiendo...
         </div>
       )}
 
@@ -642,55 +761,30 @@ function NuevaOrden() {
               className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-y"
             />
           </div>
-
-          {/* Validación de campos requeridos */}
-          {(!formData.cliente_id || !formData.producto_id) && (
-            <div className="mt-6 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-lg animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-amber-800 mb-1">Campos requeridos incompletos</h3>
-                  <ul className="text-sm text-amber-700 space-y-1">
-                    {!formData.cliente_id && (
-                      <li className="flex items-center gap-2">
-                        <span className="text-amber-500">✗</span> Selecciona un cliente
-                      </li>
-                    )}
-                    {!formData.producto_id && (
-                      <li className="flex items-center gap-2">
-                        <span className="text-amber-500">✗</span> Selecciona un producto
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Botones de acción */}
         <div className="flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={() => navigate('/ordenes')}
+          <Link
+            to="/ordenes"
             className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
           >
             Cancelar
-          </button>
+          </Link>
           <button
             type="submit"
-            disabled={loading || !formData.cliente_id || !formData.producto_id}
+            disabled={saving || !formData.cliente_id || !formData.producto_id}
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-[0.98]"
           >
-            {loading ? (
+            {saving ? (
               <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <Loader2 size={18} className="animate-spin" />
                 Guardando...
               </>
             ) : (
               <>
                 <Save size={18} />
-                Guardar Orden
+                Guardar Cambios
               </>
             )}
           </button>
@@ -700,4 +794,4 @@ function NuevaOrden() {
   );
 }
 
-export default NuevaOrden;
+export default EditarOrden;

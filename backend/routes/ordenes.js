@@ -44,11 +44,30 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Obtener orden por ID
+// Obtener orden por ID (con joins para nombres)
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await pool.query('SELECT * FROM ordenes_servicio WHERE id = ?', [id]);
+    const [rows] = await pool.query(`
+      SELECT os.*, 
+             c.razon_social as cliente_nombre, c.ruc as cliente_ruc,
+             CASE 
+               WHEN os.tipo_producto = 'farmaceutico' THEN pf.nombre_producto
+               WHEN os.tipo_producto = 'dispositivo_medico' THEN dm.nombre_producto
+               WHEN os.tipo_producto = 'biologico' THEN pb.nombre_producto
+             END as producto_nombre,
+             CASE 
+               WHEN os.tipo_producto = 'farmaceutico' THEN pf.codigo_registro
+               WHEN os.tipo_producto = 'dispositivo_medico' THEN dm.codigo_registro
+               WHEN os.tipo_producto = 'biologico' THEN pb.codigo_registro
+             END as producto_registro
+      FROM ordenes_servicio os
+      LEFT JOIN clientes c ON os.cliente_id = c.id
+      LEFT JOIN productos_farmaceuticos pf ON os.tipo_producto = 'farmaceutico' AND os.producto_id = pf.id
+      LEFT JOIN dispositivos_medicos dm ON os.tipo_producto = 'dispositivo_medico' AND os.producto_id = dm.id
+      LEFT JOIN productos_biologicos pb ON os.tipo_producto = 'biologico' AND os.producto_id = pb.id
+      WHERE os.id = ?
+    `, [id]);
     
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Orden no encontrada' });
@@ -135,12 +154,19 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Actualizar orden
+// Actualizar orden (usando el PUT genérico pero con mejor manejo)
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const fields = req.body;
     
+    // Eliminar campos que no deben actualizarse directamente (como created_at)
+    delete fields.created_at;
+    delete fields.cliente_nombre;
+    delete fields.cliente_ruc;
+    delete fields.producto_nombre;
+    delete fields.producto_registro;
+
     const updates = Object.keys(fields).map(key => `${key} = ?`).join(', ');
     const values = [...Object.values(fields), id];
     
