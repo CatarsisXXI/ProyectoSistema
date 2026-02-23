@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
@@ -8,10 +8,10 @@ function NuevoProductoBiologico() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [codigoRegistro, setCodigoRegistro] = useState('');
   
   const [formData, setFormData] = useState({
     nombre_producto: '',
+    codigo_registro: '',
     vacunas_inmunologicos: false,
     otros_biologicos: false,
     bioequivalente: false,
@@ -20,22 +20,6 @@ function NuevoProductoBiologico() {
     pais_origen: '',
     pavs: null
   });
-
-  useEffect(() => {
-    fetchSiguienteCodigo();
-  }, []);
-
-  const fetchSiguienteCodigo = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('/api/productos/biologicos/siguiente-codigo', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setCodigoRegistro(res.data.codigo);
-    } catch (error) {
-      console.error('Error fetching código:', error);
-    }
-  };
 
   const handleChange = (e) => {
     const { name, type, checked, value } = e.target;
@@ -62,7 +46,6 @@ function NuevoProductoBiologico() {
       const token = localStorage.getItem('token');
       await axios.post('/api/productos/biologicos', {
         ...formData,
-        codigo_registro: codigoRegistro,
         usuario_id: usuario.id
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -125,13 +108,16 @@ function NuevoProductoBiologico() {
 
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
-                Registro Sanitario
+                Registro Sanitario <span className="text-error">*</span>
               </label>
               <input
                 type="text"
-                value={codigoRegistro}
-                disabled
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-text-secondary font-mono"
+                name="codigo_registro"
+                value={formData.codigo_registro}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none font-mono"
+                placeholder="Ej: PRB-2024-0001"
+                required
               />
             </div>
 

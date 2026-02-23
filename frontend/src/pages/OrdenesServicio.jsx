@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function OrdenesServicio() {
+  const navigate = useNavigate();
   const [ordenes, setOrdenes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,6 +32,27 @@ function OrdenesServicio() {
       biologico: 'Producto Biológico'
     };
     return labels[tipo] || tipo;
+  };
+
+  const handleGenerarDocumento = (orden) => {
+    navigate('/documentos/nuevo', {
+      state: {
+        ordenData: {
+          id: orden.id,
+          tipo_producto: orden.tipo_producto,
+          clienteInfo: {
+            id: orden.cliente_id,
+            razon_social: orden.cliente_nombre,
+            ruc: orden.cliente_ruc
+          },
+          productoInfo: {
+            id: orden.producto_id,
+            nombre_producto: orden.producto_nombre,
+            codigo_registro: orden.producto_registro
+          }
+        }
+      }
+    });
   };
 
   if (loading) {
@@ -63,6 +85,7 @@ function OrdenesServicio() {
               <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Producto</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Registro Sanitario</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">CPB N°</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -75,6 +98,14 @@ function OrdenesServicio() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{orden.producto_nombre}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-text-secondary">{orden.producto_registro}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{orden.cpb_numero || '-'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <button
+                    onClick={() => handleGenerarDocumento(orden)}
+                    className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all text-sm font-medium"
+                  >
+                    Generar Documento
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
