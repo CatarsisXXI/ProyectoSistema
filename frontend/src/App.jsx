@@ -13,6 +13,7 @@ import NuevoDispositivoMedico from './pages/NuevoDispositivoMedico';
 import EditarDispositivoMedico from "./pages/EditarDispositivoMedico";
 import ProductosBiologicos from './pages/ProductosBiologicos';
 import NuevoProductoBiologico from './pages/NuevoProductoBiologico';
+import EditarProductoBiologico from './pages/EditarProductoBiologico';
 import OrdenesServicio from './pages/OrdenesServicio';
 import NuevaOrden from './pages/NuevaOrden';
 import DocumentosContables from './pages/DocumentosContables';
@@ -57,6 +58,7 @@ function PrivateRoutes() {
           <Route path="/productos/dispositivos/editar/:id" element={<EditarDispositivoMedico />} />
           <Route path="/productos/biologicos" element={<ProductosBiologicos />} />
           <Route path="/productos/biologicos/nuevo" element={<NuevoProductoBiologico />} />
+          <Route path="/productos/biologicos/editar/:id" element={<EditarProductoBiologico />} />
           <Route path="/ordenes" element={<OrdenesServicio />} />
           <Route path="/ordenes/nuevo" element={<NuevaOrden />} />
           <Route path="/documentos" element={<DocumentosContables />} />

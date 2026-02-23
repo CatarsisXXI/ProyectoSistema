@@ -325,6 +325,58 @@ router.post('/biologicos', async (req, res) => {
   }
 });
 
+// Obtener un producto biológico por ID
+router.get('/biologicos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query(`
+      SELECT pb.*, u.nombre_completo as usuario_nombre 
+      FROM productos_biologicos pb 
+      LEFT JOIN usuarios u ON pb.usuario_id = u.id 
+      WHERE pb.id = ?
+    `, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Producto biológico no encontrado' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error al obtener producto biológico:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Actualizar producto biológico
+router.put('/biologicos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      nombre_producto,
+      vacunas_inmunologicos,
+      otros_biologicos,
+      bioequivalente,
+      biotecnologico,
+      fabricante,
+      pais_origen,
+      pavs
+    } = req.body;
+
+    await pool.query(
+      `UPDATE productos_biologicos SET 
+        nombre_producto = ?, vacunas_inmunologicos = ?, otros_biologicos = ?,
+        bioequivalente = ?, biotecnologico = ?, fabricante = ?, pais_origen = ?, pavs = ?
+       WHERE id = ?`,
+      [nombre_producto, vacunas_inmunologicos, otros_biologicos, bioequivalente, biotecnologico, fabricante, pais_origen, pavs, id]
+    );
+
+    const [updated] = await pool.query('SELECT * FROM productos_biologicos WHERE id = ?', [id]);
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error al actualizar producto biológico:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 // ==================== BÚSQUEDAS ====================
 
 // Buscar productos por tipo y nombre

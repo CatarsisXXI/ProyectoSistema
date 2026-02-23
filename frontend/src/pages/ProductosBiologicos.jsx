@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { Plus, Pencil, Search, Calendar, User, Package } from 'lucide-react';
 
 function ProductosBiologicos() {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchProductos();
-  }, []);
+  const location = useLocation();
 
   const fetchProductos = async () => {
     try {
@@ -24,58 +22,147 @@ function ProductosBiologicos() {
     }
   };
 
+  useEffect(() => {
+    fetchProductos();
+  }, [location.key]);
+
+  // Formatear fecha
+  const formatearFecha = (fechaISO) => {
+    if (!fechaISO) return '-';
+    const fecha = new Date(fechaISO);
+    return fecha.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
   if (loading) {
-    return <div className="text-center py-8">Cargando...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-medium">Cargando productos biológicos...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="fade-in">
-      <div className="flex justify-between items-center mb-6">
+    <div className="animate-fadeIn">
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Productos Biológicos</h1>
-          <p className="text-text-secondary">Lista de productos biológicos registrados</p>
+          <h1 className="text-3xl font-bold text-slate-800">Productos Biológicos</h1>
+          <p className="text-slate-500 text-sm mt-1">Lista de productos biológicos registrados</p>
         </div>
         <Link
           to="/productos/biologicos/nuevo"
-          className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all"
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98]"
         >
-          Nuevo Producto
+          <Plus size={18} />
+          <span className="font-medium">Nuevo Producto</span>
         </Link>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Código Registro</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Nombre del Producto</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tipo</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Fabricante</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">PAVS</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {productos.map((producto) => (
-              <tr key={producto.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-primary">{producto.codigo_registro}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">{producto.nombre_producto}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
-                  {producto.vacunas_inmunologicos && 'Vacunas e Inmunológicos '}
-                  {producto.otros_biologicos && 'Otros Biológicos '}
-                  {producto.bioequivalente && 'Bioequivalente '}
-                  {producto.biotecnologico && 'Biotecnológico'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{producto.fabricante || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
-                  {producto.pavs ? 'Sí' : 'No'}
-                </td>
+      {/* Tabla */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-blue-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Código Registro</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Nombre del Producto</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Tipo</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fabricante</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">PAVS</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha Registro</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Registrado por</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {productos.map((producto) => {
+                // Construir etiquetas de tipo (booleanos)
+                const tipos = [];
+                if (producto.vacunas_inmunologicos) tipos.push('Vacunas e Inmunológicos');
+                if (producto.otros_biologicos) tipos.push('Otros Biológicos');
+                if (producto.bioequivalente) tipos.push('Bioequivalente');
+                if (producto.biotecnologico) tipos.push('Biotecnológico');
+
+                return (
+                  <tr 
+                    key={producto.id} 
+                    className="group hover:bg-blue-50/50 transition-colors duration-150"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-blue-600">
+                      {producto.codigo_registro}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                      {producto.nombre_producto}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {tipos.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {tipos.map((tipo, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                            >
+                              {tipo}
+                            </span>
+                          ))}
+                        </div>
+                      ) : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      {producto.fabricante || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {producto.pavs ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Sí</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">No</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <div className="flex items-center gap-1">
+                        <Calendar size={12} className="text-slate-400" />
+                        {formatearFecha(producto.created_at)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <div className="flex items-center gap-1">
+                        <User size={12} className="text-slate-400" />
+                        {producto.usuario_nombre || 'Usuario'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/productos/biologicos/editar/${producto.id}`}
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-all"
+                          title="Editar producto"
+                        >
+                          <Pencil size={16} />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mensaje sin resultados */}
         {productos.length === 0 && (
-          <div className="text-center py-8 text-text-secondary">
-            No hay productos biológicos registrados
+          <div className="text-center py-16 px-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
+              <Search size={24} className="text-blue-400" />
+            </div>
+            <h3 className="text-lg font-medium text-slate-700 mb-1">No hay productos biológicos</h3>
+            <p className="text-slate-500 text-sm">Comienza creando un nuevo producto biológico.</p>
           </div>
         )}
       </div>
