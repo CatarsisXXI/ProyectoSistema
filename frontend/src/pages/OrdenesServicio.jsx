@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, Pencil, FileText, Search, Calendar, Eye, Package } from 'lucide-react';
+import { Plus, Pencil, FileText, Search, Calendar, Eye } from 'lucide-react';
 
 function OrdenesServicio() {
   const navigate = useNavigate();
@@ -23,9 +23,7 @@ function OrdenesServicio() {
     }
   };
 
-  useEffect(() => {
-    fetchOrdenes();
-  }, [location.key]);
+  useEffect(() => { fetchOrdenes(); }, [location.key]);
 
   const getTipoLabel = (tipo) => {
     const labels = {
@@ -36,23 +34,46 @@ function OrdenesServicio() {
     return labels[tipo] || tipo;
   };
 
+  // Calcula la suma de montos de todos los productos de la orden
+  // Solo farmacéutico y dispositivo_medico tienen campo monto
+  const calcularTotalOrden = (orden) => {
+    return (orden.productos || []).reduce((sum, p) => {
+      if (p.tipo_producto !== 'biologico' && p.monto) {
+        sum += parseFloat(p.monto) || 0;
+      }
+      return sum;
+    }, 0);
+  };
+
   const handleGenerarDocumento = (orden) => {
     const primerProducto = orden.productos?.[0];
+    const totalOrden = calcularTotalOrden(orden);
+
+    // Construir mapa de montos por tipo de producto para pre-cargar en el documento
+    // Se toman del primer producto farmacéutico o dispositivo que tenga monto
+    const productoConMonto = (orden.productos || []).find(
+      p => p.tipo_producto !== 'biologico' && p.monto
+    );
+
     navigate('/documentos/nuevo', {
       state: {
         ordenData: {
           id: orden.id,
-          tipo_producto: primerProducto?.tipo_producto || '',
+          tipo_producto: primerProducto?.tipo_producto || 'farmaceutico',
+          totalMonto: totalOrden,                        // total de la orden para mostrarlo
+          monto_orden: totalOrden,                       // campo que se guarda en documento
           clienteInfo: {
             id: orden.cliente_id,
             razon_social: orden.cliente_nombre,
             ruc: orden.cliente_ruc
           },
-          productoInfo: {
-            id: primerProducto?.producto_id,
-            nombre_producto: primerProducto?.producto_nombre,
-            codigo_registro: primerProducto?.producto_registro
-          }
+          productoInfo: primerProducto ? {
+            id: primerProducto.producto_id,
+            nombre_producto: primerProducto.producto_nombre,
+            codigo_registro: primerProducto.producto_registro
+          } : null,
+          // Detalles de todos los productos para referencia
+          productos: orden.productos || []
         }
       }
     });
@@ -60,13 +81,13 @@ function OrdenesServicio() {
 
   const formatearFecha = (fechaISO) => {
     if (!fechaISO) return '-';
-    const fecha = new Date(fechaISO);
-    return fecha.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
+    return new Date(fechaISO).toLocaleDateString('es-ES', {
+      year: 'numeric', month: '2-digit', day: '2-digit'
     });
   };
+
+  const formatearMonto = (num) =>
+    num > 0 ? `S/ ${num.toFixed(2)}` : '-';
 
   if (loading) {
     return (
@@ -106,6 +127,7 @@ function OrdenesServicio() {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Productos</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Cant.</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Registros Sanitarios</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Total Orden</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha Registro</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
               </tr>
@@ -115,6 +137,7 @@ function OrdenesServicio() {
                 const cantidad = orden.productos?.length || 0;
                 const primerProducto = orden.productos?.[0];
                 const otros = cantidad > 1 ? ` +${cantidad - 1}` : '';
+                const totalOrden = calcularTotalOrden(orden);
                 return (
                   <tr key={orden.id} className="group hover:bg-blue-50/50 transition-colors duration-150">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
@@ -138,6 +161,9 @@ function OrdenesServicio() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">
                       {primerProducto ? primerProducto.producto_registro : '-'}
                       {otros && <span className="ml-1 text-xs text-slate-400">y más</span>}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-emerald-700">
+                      {formatearMonto(totalOrden)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                       <div className="flex items-center gap-1">
@@ -164,7 +190,7 @@ function OrdenesServicio() {
                         <button
                           onClick={() => handleGenerarDocumento(orden)}
                           className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                          title="Generar documento"
+                          title="Generar documento contable"
                         >
                           <FileText size={16} />
                         </button>

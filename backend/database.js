@@ -107,9 +107,6 @@ const initDatabase = async () => {
     )
   `);
 
-  // ============================================
-  // NUEVAS TABLAS PARA MÚLTIPLES PRODUCTOS POR ORDEN
-  // ============================================
   // Tabla ordenes (cabecera)
   await connection.query(`
     CREATE TABLE IF NOT EXISTS ordenes (
@@ -175,10 +172,40 @@ const initDatabase = async () => {
     )
   `);
 
-  // Tabla documentos_contables (sin cambios)
+  // ============================================
+  // TABLA DE CORRELATIVOS POR TIPO DE DOCUMENTO
+  // ============================================
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS correlativos_documentos (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      tipo_documento ENUM('factura', 'factura_electronica', 'boleta', 'nota_credito') UNIQUE NOT NULL,
+      prefijo VARCHAR(10) NOT NULL,
+      ultimo_numero INT DEFAULT 0
+    )
+  `);
+
+  // Insertar correlativos iniciales si no existen
+  await connection.query(`
+    INSERT IGNORE INTO correlativos_documentos (tipo_documento, prefijo, ultimo_numero) VALUES
+      ('factura',            'F001',  0),
+      ('factura_electronica','FE01',  0),
+      ('boleta',             'B001',  0),
+      ('nota_credito',       'NC01',  0)
+  `);
+
+  // Tabla documentos_contables
   await connection.query(`
     CREATE TABLE IF NOT EXISTS documentos_contables (
       id INT PRIMARY KEY AUTO_INCREMENT,
+      
+      -- Tipo y correlativo
+      tipo_documento ENUM('factura','factura_electronica','boleta','nota_credito') DEFAULT 'factura',
+      numero_documento VARCHAR(20),
+      
+      -- Referencia a la orden de origen (opcional)
+      orden_id INT,
+      monto_orden DECIMAL(10,2) DEFAULT 0,
+      
       tipo_producto ENUM('farmaceutico', 'dispositivo_medico', 'biologico') NOT NULL,
       cliente_id INT NOT NULL,
       producto_id INT NOT NULL,
@@ -231,10 +258,20 @@ const initDatabase = async () => {
     )
   `);
 
+  // Migración: agregar columnas nuevas si la tabla ya existe
+  const alterColumns = [
+    `ALTER TABLE documentos_contables ADD COLUMN IF NOT EXISTS tipo_documento ENUM('factura','factura_electronica','boleta','nota_credito') DEFAULT 'factura'`,
+    `ALTER TABLE documentos_contables ADD COLUMN IF NOT EXISTS numero_documento VARCHAR(20) AFTER tipo_documento`,
+    `ALTER TABLE documentos_contables ADD COLUMN IF NOT EXISTS orden_id INT AFTER numero_documento`,
+    `ALTER TABLE documentos_contables ADD COLUMN IF NOT EXISTS monto_orden DECIMAL(10,2) DEFAULT 0 AFTER orden_id`,
+  ];
+  for (const sql of alterColumns) {
+    try { await connection.query(sql); } catch (e) { /* columna ya existe */ }
+  }
+
   // Insertar usuario admin por defecto
   const bcrypt = require('bcryptjs');
   const hashedPassword = await bcrypt.hash('admin123', 10);
-  
   await connection.query(`
     INSERT IGNORE INTO usuarios (username, password, nombre_completo, rol) 
     VALUES ('admin', ?, 'Administrador', 'admin')
