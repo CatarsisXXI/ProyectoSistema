@@ -2,74 +2,38 @@ import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { Save, ArrowLeft, Calendar, User, AlertCircle, Package } from 'lucide-react';
+import { Save, ArrowLeft, Calendar, User, AlertCircle, Package, Trash2, Plus } from 'lucide-react';
 
 function NuevaOrden() {
   const { usuario } = useContext(AuthContext);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [tipoProducto, setTipoProducto] = useState('farmaceutico');
-  
+  const [tipoProductoBusqueda, setTipoProductoBusqueda] = useState('farmaceutico');
+
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
   const [busquedaRUC, setBusquedaRUC] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
-  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
-  const [busquedaProducto, setBusquedaProducto] = useState('');
   const [mostrarClientesDropdown, setMostrarClientesDropdown] = useState(false);
-  const [mostrarProductosDropdown, setMostrarProductosDropdown] = useState(false);
 
-  const [formData, setFormData] = useState({
-    cliente_id: '',
-    producto_id: '',
-    // Farmacéutico
-    categoria1: false,
-    categoria2: false,
-    cambio_mayor: false,
-    cambio_mayor_autorizado: '',
-    cambio_menor: false,
-    cambio_menor_autorizado: '',
-    inscripcion: false,
-    inscripcion_autorizado: '',
-    renovacion: false,
-    renovacion_autorizado: '',
-    traduccion: false,
-    traduccion_autorizado: '',
-    // Dispositivos
-    clase1: false,
-    clase1_autorizado: '',
-    clase2: false,
-    clase2_autorizado: '',
-    clase3: false,
-    clase3_autorizado: '',
-    clase4: false,
-    clase4_autorizado: '',
-    // Biológicos
-    vaccines_immunologicos: false,
-    vaccines_immunologicos_autorizado: '',
-    otros_biologicos_chk: false,
-    otros_biologicos_autorizado: '',
-    bioequivalente_chk: false,
-    bioequivalente_autorizado: '',
-    biotecnologico_chk: false,
-    biotecnologico_autorizado: '',
-    // Comunes
-    cpb_numero: '',
-    monto: '',
-    fecha_recepcion: '',
-    fecha_ingreso_vuce: '',
-    fecha_fin_proceso: '',
-    observaciones: ''
-  });
+  // Estados para búsqueda temporal de producto antes de agregar
+  const [busquedaProductoTemp, setBusquedaProductoTemp] = useState('');
+  const [productoTempSeleccionado, setProductoTempSeleccionado] = useState(null);
+  const [mostrarProductosDropdownTemp, setMostrarProductosDropdownTemp] = useState(false);
+
+  // Lista de productos agregados a la orden
+  const [productosAgregados, setProductosAgregados] = useState([]);
 
   useEffect(() => {
     fetchClientes();
   }, []);
 
   useEffect(() => {
-    fetchProductos();
-  }, [tipoProducto]);
+    if (tipoProductoBusqueda) {
+      fetchProductos();
+    }
+  }, [tipoProductoBusqueda]);
 
   const fetchClientes = async () => {
     try {
@@ -88,10 +52,10 @@ function NuevaOrden() {
     try {
       const token = localStorage.getItem('token');
       let endpoint = '';
-      if (tipoProducto === 'farmaceutico') endpoint = '/api/productos/farmaceuticos';
-      else if (tipoProducto === 'dispositivo_medico') endpoint = '/api/productos/dispositivos';
+      if (tipoProductoBusqueda === 'farmaceutico') endpoint = '/api/productos/farmaceuticos';
+      else if (tipoProductoBusqueda === 'dispositivo_medico') endpoint = '/api/productos/dispositivos';
       else endpoint = '/api/productos/biologicos';
-      
+
       const res = await axios.get(endpoint, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -104,32 +68,100 @@ function NuevaOrden() {
 
   const seleccionarCliente = (cliente) => {
     setClienteSeleccionado(cliente);
-    setFormData(prev => ({ ...prev, cliente_id: cliente.id }));
     setBusquedaRUC(cliente.ruc);
     setMostrarClientesDropdown(false);
   };
 
-  const seleccionarProducto = (producto) => {
-    setProductoSeleccionado(producto);
-    setFormData(prev => ({ ...prev, producto_id: producto.id }));
-    setBusquedaProducto(producto.nombre_producto);
-    setMostrarProductosDropdown(false);
+  // Funciones para el producto temporal
+  const seleccionarProductoTemp = (producto) => {
+    setProductoTempSeleccionado(producto);
+    setBusquedaProductoTemp(producto.nombre_producto);
+    setMostrarProductosDropdownTemp(false);
   };
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
-    }));
+  // Inicializa los servicios según el tipo de producto, incluyendo los campos comunes
+  const inicializarServiciosPorTipo = (tipo) => {
+    const baseComun = {
+      fecha_recepcion: '',
+      fecha_ingreso_vuce: '',
+      fecha_fin_proceso: '',
+      observaciones: ''
+    };
+
+    if (tipo === 'farmaceutico' || tipo === 'dispositivo_medico') {
+      return {
+        ...baseComun,
+        cpb_numero: '',
+        monto: '',
+        traduccion: false,
+        traduccion_autorizado: '',
+        ...(tipo === 'farmaceutico' ? {
+          categoria1: false,
+          categoria2: false,
+          cambio_mayor: false,
+          cambio_mayor_autorizado: '',
+          cambio_menor: false,
+          cambio_menor_autorizado: '',
+          inscripcion: false,
+          inscripcion_autorizado: '',
+          renovacion: false,
+          renovacion_autorizado: ''
+        } : {
+          clase1: false,
+          clase1_autorizado: '',
+          clase2: false,
+          clase2_autorizado: '',
+          clase3: false,
+          clase3_autorizado: '',
+          clase4: false,
+          clase4_autorizado: ''
+        })
+      };
+    } else if (tipo === 'biologico') {
+      return {
+        ...baseComun,
+        traduccion: false,
+        traduccion_autorizado: '',
+        vaccines_immunologicos: false,
+        vaccines_immunologicos_autorizado: '',
+        otros_biologicos_chk: false,
+        otros_biologicos_autorizado: '',
+        bioequivalente_chk: false,
+        bioequivalente_autorizado: '',
+        biotecnologico_chk: false,
+        biotecnologico_autorizado: ''
+      };
+    }
+    return {};
   };
 
-  const handleTipoProductoChange = (e) => {
-    setTipoProducto(e.target.value);
-    setProductoSeleccionado(null);
-    setFormData(prev => ({ ...prev, producto_id: '' }));
-    setBusquedaProducto('');
-    setMostrarProductosDropdown(false);
+  // Agrega el producto temporal a la lista con sus servicios inicializados
+  const agregarProducto = () => {
+    if (!productoTempSeleccionado) return;
+
+    const tipo = tipoProductoBusqueda;
+    const nuevoProducto = {
+      producto: productoTempSeleccionado,
+      tipo: tipo,
+      servicios: inicializarServiciosPorTipo(tipo)
+    };
+
+    setProductosAgregados([...productosAgregados, nuevoProducto]);
+    setProductoTempSeleccionado(null);
+    setBusquedaProductoTemp('');
+  };
+
+  // Maneja cambios en los servicios de un producto específico
+  const handleServicioChange = (index, field, value) => {
+    const nuevosProductos = [...productosAgregados];
+    nuevosProductos[index].servicios[field] = value;
+    setProductosAgregados(nuevosProductos);
+  };
+
+  // Elimina un producto de la lista
+  const eliminarProducto = (index) => {
+    const nuevosProductos = productosAgregados.filter((_, i) => i !== index);
+    setProductosAgregados(nuevosProductos);
   };
 
   const filteredClientes = clientes.filter(c =>
@@ -137,8 +169,8 @@ function NuevaOrden() {
     c.razon_social.toLowerCase().includes(busquedaRUC.toLowerCase())
   );
 
-  const filteredProductos = productos.filter(p =>
-    p.nombre_producto.toLowerCase().includes(busquedaProducto.toLowerCase())
+  const filteredProductosTemp = productos.filter(p =>
+    p.nombre_producto.toLowerCase().includes(busquedaProductoTemp.toLowerCase())
   );
 
   const handleSubmit = async (e) => {
@@ -146,12 +178,24 @@ function NuevaOrden() {
     setError('');
     setLoading(true);
 
+    if (!clienteSeleccionado || productosAgregados.length === 0) {
+      setError('Debe seleccionar un cliente y al menos un producto');
+      setLoading(false);
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
-      await axios.post('/api/ordenes', {
-        tipo_producto: tipoProducto,
-        ...formData
-      }, {
+      const payload = {
+        cliente_id: clienteSeleccionado.id,
+        productos: productosAgregados.map(item => ({
+          producto_id: item.producto.id,
+          tipo_producto: item.tipo,
+          ...item.servicios
+        }))
+      };
+
+      await axios.post('/api/ordenes', payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
       navigate('/ordenes');
@@ -168,9 +212,274 @@ function NuevaOrden() {
     day: 'numeric'
   });
 
+  // Renderiza los campos específicos de servicios según el tipo
+  const renderServiciosEspecificos = (producto, index) => {
+    const { tipo, servicios } = producto;
+
+    if (tipo === 'farmaceutico') {
+      return (
+        <>
+          <div className="mb-6 p-4 bg-slate-50 rounded-lg">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Categoría</h3>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={servicios.categoria1}
+                  onChange={(e) => handleServicioChange(index, 'categoria1', e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                Categoría 1
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={servicios.categoria2}
+                  onChange={(e) => handleServicioChange(index, 'categoria2', e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                Categoría 2
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {['cambio_mayor', 'cambio_menor', 'inscripcion', 'renovacion', 'traduccion'].map(item => (
+              <div key={item}>
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
+                  <input
+                    type="checkbox"
+                    checked={servicios[item]}
+                    onChange={(e) => handleServicioChange(index, item, e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                  />
+                  {item === 'cambio_mayor' ? 'Cambio Mayor' :
+                    item === 'cambio_menor' ? 'Cambio Menor' :
+                    item === 'inscripcion' ? 'Inscripción' :
+                    item === 'renovacion' ? 'Renovación' : 'Traducción'}
+                </label>
+                {servicios[item] && (
+                  <div className="ml-6">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Autorizado por <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={servicios[`${item}_autorizado`] || ''}
+                      onChange={(e) => handleServicioChange(index, `${item}_autorizado`, e.target.value)}
+                      required
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      );
+    }
+
+    if (tipo === 'dispositivo_medico') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map(num => (
+            <div key={num}>
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
+                <input
+                  type="checkbox"
+                  checked={servicios[`clase${num}`]}
+                  onChange={(e) => handleServicioChange(index, `clase${num}`, e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                Clase {num}
+              </label>
+              {servicios[`clase${num}`] && (
+                <div className="ml-6">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Autorizado por <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={servicios[`clase${num}_autorizado`] || ''}
+                    onChange={(e) => handleServicioChange(index, `clase${num}_autorizado`, e.target.value)}
+                    required
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+          <div>
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
+              <input
+                type="checkbox"
+                checked={servicios.traduccion}
+                onChange={(e) => handleServicioChange(index, 'traduccion', e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+              />
+              Traducción
+            </label>
+            {servicios.traduccion && (
+              <div className="ml-6">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Autorizado por <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={servicios.traduccion_autorizado || ''}
+                  onChange={(e) => handleServicioChange(index, 'traduccion_autorizado', e.target.value)}
+                  required
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (tipo === 'biologico') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[
+            { name: 'vaccines_immunologicos', label: 'Vacunas e Inmunológicos' },
+            { name: 'otros_biologicos_chk', label: 'Otros Biológicos' },
+            { name: 'bioequivalente_chk', label: 'Bioequivalente' },
+            { name: 'biotecnologico_chk', label: 'Biotecnológico' }
+          ].map(item => (
+            <div key={item.name}>
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
+                <input
+                  type="checkbox"
+                  checked={servicios[item.name]}
+                  onChange={(e) => handleServicioChange(index, item.name, e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                {item.label}
+              </label>
+              {servicios[item.name] && (
+                <div className="ml-6">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Autorizado por <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={servicios[`${item.name}_autorizado`] || ''}
+                    onChange={(e) => handleServicioChange(index, `${item.name}_autorizado`, e.target.value)}
+                    required
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+          <div>
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
+              <input
+                type="checkbox"
+                checked={servicios.traduccion}
+                onChange={(e) => handleServicioChange(index, 'traduccion', e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+              />
+              Traducción
+            </label>
+            {servicios.traduccion && (
+              <div className="ml-6">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Autorizado por <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={servicios.traduccion_autorizado || ''}
+                  onChange={(e) => handleServicioChange(index, 'traduccion_autorizado', e.target.value)}
+                  required
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Renderiza los campos comunes (fechas, CPB, monto, observaciones) según el tipo
+  const renderCamposComunes = (producto, index) => {
+    const { tipo, servicios } = producto;
+
+    return (
+      <div className="mt-6 border-t border-slate-200 pt-6">
+        <h4 className="text-md font-medium text-slate-700 mb-4">Detalles de la orden para este producto</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {(tipo === 'farmaceutico' || tipo === 'dispositivo_medico') && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">CPB N°</label>
+                <input
+                  type="text"
+                  value={servicios.cpb_numero || ''}
+                  onChange={(e) => handleServicioChange(index, 'cpb_numero', e.target.value)}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Monto S/.</label>
+                <input
+                  type="number"
+                  value={servicios.monto || ''}
+                  onChange={(e) => handleServicioChange(index, 'monto', e.target.value)}
+                  step="0.01"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                />
+              </div>
+            </>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Recepción</label>
+            <input
+              type="date"
+              value={servicios.fecha_recepcion || ''}
+              onChange={(e) => handleServicioChange(index, 'fecha_recepcion', e.target.value)}
+              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Ingreso a VUCE</label>
+            <input
+              type="date"
+              value={servicios.fecha_ingreso_vuce || ''}
+              onChange={(e) => handleServicioChange(index, 'fecha_ingreso_vuce', e.target.value)}
+              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Fin de Proceso</label>
+            <input
+              type="date"
+              value={servicios.fecha_fin_proceso || ''}
+              onChange={(e) => handleServicioChange(index, 'fecha_fin_proceso', e.target.value)}
+              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+            />
+          </div>
+        </div>
+        <div className="mt-6">
+          <label className="block text-sm font-medium text-slate-700 mb-1">Observaciones</label>
+          <textarea
+            value={servicios.observaciones || ''}
+            onChange={(e) => handleServicioChange(index, 'observaciones', e.target.value)}
+            rows={3}
+            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-y"
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="animate-fadeIn max-w-5xl mx-auto">
-      {/* Encabezado con botón de volver */}
+      {/* Encabezado */}
       <div className="flex items-center gap-4 mb-8">
         <button
           onClick={() => navigate('/ordenes')}
@@ -181,12 +490,12 @@ function NuevaOrden() {
         <div>
           <h1 className="text-3xl font-bold text-slate-800">Nueva Orden de Servicio</h1>
           <p className="text-slate-500 text-sm mt-1">
-            Crear nueva orden de servicio
+            Crear nueva orden de servicio con múltiples productos
           </p>
         </div>
       </div>
 
-      {/* Información de fecha y usuario (solo lectura) */}
+      {/* Fecha y usuario fijos */}
       <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -224,67 +533,37 @@ function NuevaOrden() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Datos Generales */}
+        {/* Cliente */}
         <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 lg:p-8">
           <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2 border-b border-slate-200 pb-4 mb-4">
-            <Package size={18} className="text-blue-500" />
-            Datos Generales
+            <User size={18} className="text-blue-500" />
+            Cliente
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Tipo de Producto
-              </label>
-              <select
-                value={tipoProducto}
-                onChange={handleTipoProductoChange}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-              >
-                <option value="farmaceutico">Farmacéutico</option>
-                <option value="dispositivo_medico">Dispositivo Médico</option>
-                <option value="biologico">Producto Biológico</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Buscar Cliente por RUC */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="relative">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Buscar Cliente por RUC
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Buscar Cliente por RUC</label>
               <input
                 type="text"
                 value={busquedaRUC}
-                onChange={(e) => {
-                  setBusquedaRUC(e.target.value);
-                  setMostrarClientesDropdown(true);
-                }}
+                onChange={(e) => { setBusquedaRUC(e.target.value); setMostrarClientesDropdown(true); }}
                 onFocus={() => busquedaRUC && setMostrarClientesDropdown(true)}
                 placeholder="Ingrese RUC o nombre"
                 className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               />
               {mostrarClientesDropdown && busquedaRUC && filteredClientes.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 border border-slate-200 rounded-lg shadow-xl bg-white z-20 max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="absolute top-full left-0 right-0 mt-2 border border-slate-200 rounded-lg shadow-xl bg-white z-20 max-h-72 overflow-y-auto">
                   {filteredClientes.map(cliente => (
                     <button
                       key={cliente.id}
                       type="button"
                       onClick={() => seleccionarCliente(cliente)}
-                      className="w-full px-4 py-3 hover:bg-blue-50 text-left border-b border-slate-100 last:border-b-0 transition-all duration-150"
+                      className="w-full px-4 py-3 hover:bg-blue-50 text-left border-b border-slate-100 last:border-b-0"
                     >
                       <div className="font-medium text-slate-700">{cliente.razon_social}</div>
                       <div className="text-sm text-blue-600 font-semibold">{cliente.ruc}</div>
-                      <div className="text-xs text-slate-500 mt-1">Dirección: {cliente.direccion || 'No especificada'}</div>
                     </button>
                   ))}
-                </div>
-              )}
-              {mostrarClientesDropdown && busquedaRUC && filteredClientes.length === 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 p-4 border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-500 z-20 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <p className="font-medium">No se encontraron clientes</p>
-                  <p className="text-xs mt-1">Intenta con otro RUC o nombre</p>
                 </div>
               )}
             </div>
@@ -307,32 +586,46 @@ function NuevaOrden() {
               />
             </div>
           </div>
+        </div>
 
-          {/* Buscar Producto por Nombre */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="relative">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Buscar Producto
-              </label>
+        {/* Agregar Productos */}
+        <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 lg:p-8">
+          <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2 border-b border-slate-200 pb-4 mb-4">
+            <Package size={18} className="text-blue-500" />
+            Agregar Productos
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Producto</label>
+              <select
+                value={tipoProductoBusqueda}
+                onChange={(e) => setTipoProductoBusqueda(e.target.value)}
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+              >
+                <option value="farmaceutico">Farmacéutico</option>
+                <option value="dispositivo_medico">Dispositivo Médico</option>
+                <option value="biologico">Producto Biológico</option>
+              </select>
+            </div>
+            <div className="relative md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">Buscar Producto</label>
               <input
                 type="text"
-                value={busquedaProducto}
-                onChange={(e) => {
-                  setBusquedaProducto(e.target.value);
-                  setMostrarProductosDropdown(true);
-                }}
-                onFocus={() => busquedaProducto && setMostrarProductosDropdown(true)}
+                value={busquedaProductoTemp}
+                onChange={(e) => { setBusquedaProductoTemp(e.target.value); setMostrarProductosDropdownTemp(true); }}
+                onFocus={() => busquedaProductoTemp && setMostrarProductosDropdownTemp(true)}
                 placeholder="Nombre del producto"
                 className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               />
-              {mostrarProductosDropdown && busquedaProducto && filteredProductos.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 border border-slate-200 rounded-lg shadow-xl bg-white z-20 max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
-                  {filteredProductos.map(producto => (
+              {mostrarProductosDropdownTemp && busquedaProductoTemp && filteredProductosTemp.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 border border-slate-200 rounded-lg shadow-xl bg-white z-20 max-h-72 overflow-y-auto">
+                  {filteredProductosTemp.map(producto => (
                     <button
                       key={producto.id}
                       type="button"
-                      onClick={() => seleccionarProducto(producto)}
-                      className="w-full px-4 py-3 hover:bg-blue-50 text-left border-b border-slate-100 last:border-b-0 transition-all duration-150"
+                      onClick={() => seleccionarProductoTemp(producto)}
+                      className="w-full px-4 py-3 hover:bg-blue-50 text-left border-b border-slate-100 last:border-b-0"
                     >
                       <div className="font-medium text-slate-700">{producto.nombre_producto}</div>
                       <div className="text-sm text-blue-600 font-semibold">Reg: {producto.codigo_registro}</div>
@@ -340,346 +633,98 @@ function NuevaOrden() {
                   ))}
                 </div>
               )}
-              {mostrarProductosDropdown && busquedaProducto && filteredProductos.length === 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 p-4 border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-500 z-20 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <p className="font-medium">No se encontraron productos</p>
-                  <p className="text-xs mt-1">Intenta con otro nombre</p>
-                </div>
-              )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nombre del Producto</label>
-              <input
-                type="text"
-                value={productoSeleccionado?.nombre_producto || ''}
-                disabled
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Registro Sanitario</label>
-              <input
-                type="text"
-                value={productoSeleccionado?.codigo_registro || ''}
-                disabled
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed"
-              />
+              <button
+                type="button"
+                onClick={agregarProducto}
+                disabled={!productoTempSeleccionado}
+                className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-[0.98]"
+              >
+                <Plus size={18} />
+                Agregar
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Servicios según tipo */}
-        <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 lg:p-8">
-          <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2 border-b border-slate-200 pb-4 mb-4">
-            <Package size={18} className="text-blue-500" />
-            Servicios
-          </h2>
-
-          {/* Farmacéutico */}
-          {tipoProducto === 'farmaceutico' && (
-            <>
-              <div className="mb-6 p-4 bg-slate-50 rounded-lg">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">Categoría</h3>
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="categoria1"
-                      checked={formData.categoria1}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                    />
-                    Categoría 1
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="categoria2"
-                      checked={formData.categoria2}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                    />
-                    Categoría 2
-                  </label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {['cambio_mayor', 'cambio_menor', 'inscripcion', 'renovacion', 'traduccion'].map(item => (
-                  <div key={item}>
-                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
-                      <input
-                        type="checkbox"
-                        name={item}
-                        checked={formData[item]}
-                        onChange={handleChange}
-                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                      />
-                      {item === 'cambio_mayor' ? 'Cambio Mayor' :
-                       item === 'cambio_menor' ? 'Cambio Menor' :
-                       item === 'inscripcion' ? 'Inscripción' :
-                       item === 'renovacion' ? 'Renovación' : 'Traducción'}
-                    </label>
-                    {formData[item] && (
-                      <div className="ml-6">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Autorizado por <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name={`${item}_autorizado`}
-                          value={formData[`${item}_autorizado`]}
-                          onChange={handleChange}
-                          required
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Dispositivo Médico */}
-          {tipoProducto === 'dispositivo_medico' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1,2,3,4].map(num => (
-                <div key={num}>
-                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
-                    <input
-                      type="checkbox"
-                      name={`clase${num}`}
-                      checked={formData[`clase${num}`]}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                    />
-                    Clase {num}
-                  </label>
-                  {formData[`clase${num}`] && (
-                    <div className="ml-6">
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Autorizado por <span className="text-rose-500">*</span>
-                      </label>
+          {/* Lista de productos agregados */}
+          {productosAgregados.length > 0 && (
+            <div className="mt-8 space-y-6">
+              <h3 className="text-md font-semibold text-slate-700">Productos en la orden</h3>
+              {productosAgregados.map((item, index) => (
+                <div key={index} className="border border-slate-200 rounded-lg p-6 relative">
+                  <button
+                    type="button"
+                    onClick={() => eliminarProducto(index)}
+                    className="absolute top-4 right-4 text-rose-500 hover:text-rose-700 transition-colors"
+                    title="Eliminar producto"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pr-8">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Producto</label>
                       <input
                         type="text"
-                        name={`clase${num}_autorizado`}
-                        value={formData[`clase${num}_autorizado`]}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        value={item.producto.nombre_producto}
+                        disabled
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed"
                       />
                     </div>
-                  )}
-                </div>
-              ))}
-              <div>
-                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
-                  <input
-                    type="checkbox"
-                    name="traduccion"
-                    checked={formData.traduccion}
-                    onChange={handleChange}
-                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                  />
-                  Traducción
-                </label>
-                {formData.traduccion && (
-                  <div className="ml-6">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Autorizado por <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="traduccion_autorizado"
-                      value={formData.traduccion_autorizado}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Producto Biológico */}
-          {tipoProducto === 'biologico' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                { name: 'vaccines_immunologicos', label: 'Vacunas e Inmunológicos' },
-                { name: 'otros_biologicos_chk', label: 'Otros Biológicos' },
-                { name: 'bioequivalente_chk', label: 'Bioequivalente' },
-                { name: 'biotecnologico_chk', label: 'Biotecnológico' }
-              ].map(item => (
-                <div key={item.name}>
-                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
-                    <input
-                      type="checkbox"
-                      name={item.name}
-                      checked={formData[item.name]}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                    />
-                    {item.label}
-                  </label>
-                  {formData[item.name] && (
-                    <div className="ml-6">
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Autorizado por <span className="text-rose-500">*</span>
-                      </label>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Registro Sanitario</label>
                       <input
                         type="text"
-                        name={`${item.name}_autorizado`}
-                        value={formData[`${item.name}_autorizado`]}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        value={item.producto.codigo_registro}
+                        disabled
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed"
                       />
                     </div>
-                  )}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Tipo</label>
+                      <input
+                        type="text"
+                        value={
+                          item.tipo === 'farmaceutico' ? 'Farmacéutico' :
+                          item.tipo === 'dispositivo_medico' ? 'Dispositivo Médico' : 'Biológico'
+                        }
+                        disabled
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                  {renderServiciosEspecificos(item, index)}
+                  {renderCamposComunes(item, index)}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Validación de campos requeridos */}
+        {(!clienteSeleccionado || productosAgregados.length === 0) && (
+          <div className="p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-lg">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
               <div>
-                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer mb-4">
-                  <input
-                    type="checkbox"
-                    name="traduccion"
-                    checked={formData.traduccion}
-                    onChange={handleChange}
-                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                  />
-                  Traducción
-                </label>
-                {formData.traduccion && (
-                  <div className="ml-6">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Autorizado por <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="traduccion_autorizado"
-                      value={formData.traduccion_autorizado}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                    />
-                  </div>
-                )}
+                <h3 className="font-semibold text-amber-800 mb-1">Campos requeridos incompletos</h3>
+                <ul className="text-sm text-amber-700 space-y-1">
+                  {!clienteSeleccionado && <li>✗ Selecciona un cliente</li>}
+                  {productosAgregados.length === 0 && <li>✗ Agrega al menos un producto</li>}
+                </ul>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Fechas, CPB, Monto y Observaciones */}
-        <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 lg:p-8">
-          <h2 className="text-lg font-semibold text-slate-700 flex items-center gap-2 border-b border-slate-200 pb-4 mb-4">
-            <Calendar size={18} className="text-blue-500" />
-            Fechas y Observaciones
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">CPB N°</label>
-              <input
-                type="text"
-                name="cpb_numero"
-                value={formData.cpb_numero}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Monto S/.</label>
-              <input
-                type="number"
-                name="monto"
-                value={formData.monto}
-                onChange={handleChange}
-                step="0.01"
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Recepción</label>
-              <input
-                type="date"
-                name="fecha_recepcion"
-                value={formData.fecha_recepcion}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Ingreso a VUCE</label>
-              <input
-                type="date"
-                name="fecha_ingreso_vuce"
-                value={formData.fecha_ingreso_vuce}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Fin de Proceso</label>
-              <input
-                type="date"
-                name="fecha_fin_proceso"
-                value={formData.fecha_fin_proceso}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              />
-            </div>
           </div>
+        )}
 
-          <div className="mt-6">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Observaciones</label>
-            <textarea
-              name="observaciones"
-              value={formData.observaciones}
-              onChange={handleChange}
-              rows={4}
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-y"
-            />
-          </div>
-
-          {/* Validación de campos requeridos */}
-          {(!formData.cliente_id || !formData.producto_id) && (
-            <div className="mt-6 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-lg animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-amber-800 mb-1">Campos requeridos incompletos</h3>
-                  <ul className="text-sm text-amber-700 space-y-1">
-                    {!formData.cliente_id && (
-                      <li className="flex items-center gap-2">
-                        <span className="text-amber-500">✗</span> Selecciona un cliente
-                      </li>
-                    )}
-                    {!formData.producto_id && (
-                      <li className="flex items-center gap-2">
-                        <span className="text-amber-500">✗</span> Selecciona un producto
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Botones de acción */}
+        {/* Botones */}
         <div className="flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={() => navigate('/ordenes')}
-            className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
-          >
+          <button type="button" onClick={() => navigate('/ordenes')} className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium">
             Cancelar
           </button>
           <button
             type="submit"
-            disabled={loading || !formData.cliente_id || !formData.producto_id}
+            disabled={loading || !clienteSeleccionado || productosAgregados.length === 0}
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md active:scale-[0.98]"
           >
             {loading ? (

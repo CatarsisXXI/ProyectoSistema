@@ -107,13 +107,37 @@ const initDatabase = async () => {
     )
   `);
 
-  // Tabla ordenes_servicio
+  // ============================================
+  // NUEVAS TABLAS PARA MÚLTIPLES PRODUCTOS POR ORDEN
+  // ============================================
+  // Tabla ordenes (cabecera)
   await connection.query(`
-    CREATE TABLE IF NOT EXISTS ordenes_servicio (
+    CREATE TABLE IF NOT EXISTS ordenes (
       id INT PRIMARY KEY AUTO_INCREMENT,
-      tipo_producto ENUM('farmaceutico', 'dispositivo_medico', 'biologico') NOT NULL,
       cliente_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Tabla orden_productos (detalle)
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS orden_productos (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      orden_id INT NOT NULL,
       producto_id INT NOT NULL,
+      tipo_producto ENUM('farmaceutico', 'dispositivo_medico', 'biologico') NOT NULL,
+      
+      -- Campos comunes
+      cpb_numero VARCHAR(50),
+      monto DECIMAL(10,2),
+      fecha_recepcion DATE,
+      fecha_ingreso_vuce DATE,
+      fecha_fin_proceso DATE,
+      observaciones TEXT,
+      
+      -- Farmacéutico
       categoria1 BOOLEAN DEFAULT FALSE,
       categoria2 BOOLEAN DEFAULT FALSE,
       cambio_mayor BOOLEAN DEFAULT FALSE,
@@ -126,6 +150,8 @@ const initDatabase = async () => {
       renovacion_autorizado VARCHAR(100),
       traduccion BOOLEAN DEFAULT FALSE,
       traduccion_autorizado VARCHAR(100),
+      
+      -- Dispositivo médico
       clase1 BOOLEAN DEFAULT FALSE,
       clase1_autorizado VARCHAR(100),
       clase2 BOOLEAN DEFAULT FALSE,
@@ -134,6 +160,8 @@ const initDatabase = async () => {
       clase3_autorizado VARCHAR(100),
       clase4 BOOLEAN DEFAULT FALSE,
       clase4_autorizado VARCHAR(100),
+      
+      -- Biológico
       vaccines_immunologicos BOOLEAN DEFAULT FALSE,
       vaccines_immunologicos_autorizado VARCHAR(100),
       otros_biologicos_chk BOOLEAN DEFAULT FALSE,
@@ -142,18 +170,12 @@ const initDatabase = async () => {
       bioequivalente_autorizado VARCHAR(100),
       biotecnologico_chk BOOLEAN DEFAULT FALSE,
       biotecnologico_autorizado VARCHAR(100),
-      cpb_numero VARCHAR(50),
-      monto DECIMAL(10,2),
-      fecha_recepcion DATE,
-      fecha_ingreso_vuce DATE,
-      fecha_fin_proceso DATE,
-      observaciones TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+      
+      FOREIGN KEY (orden_id) REFERENCES ordenes(id) ON DELETE CASCADE
     )
   `);
 
-  // Tabla documentos_contables
+  // Tabla documentos_contables (sin cambios)
   await connection.query(`
     CREATE TABLE IF NOT EXISTS documentos_contables (
       id INT PRIMARY KEY AUTO_INCREMENT,

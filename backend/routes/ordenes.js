@@ -3,7 +3,10 @@ const { pool } = require('../database');
 
 const router = express.Router();
 
-// Middleware para verificar autenticación
+// Helper para castear booleanos de forma segura
+const toBool = (val) => (val === true || val === 1 || val === '1') ? 1 : 0;
+
+// Middleware de autenticación
 const authenticateToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) {
@@ -14,177 +17,321 @@ const authenticateToken = (req, res, next) => {
 
 router.use(authenticateToken);
 
-// Obtener todas las órdenes de servicio
+// -------------------------------------------------------------------
+// Obtener todas las órdenes con sus productos
+// -------------------------------------------------------------------
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await pool.query(`
-      SELECT os.*, 
-             c.razon_social as cliente_nombre, c.ruc as cliente_ruc,
-             CASE 
-               WHEN os.tipo_producto = 'farmaceutico' THEN pf.nombre_producto
-               WHEN os.tipo_producto = 'dispositivo_medico' THEN dm.nombre_producto
-               WHEN os.tipo_producto = 'biologico' THEN pb.nombre_producto
-             END as producto_nombre,
-             CASE 
-               WHEN os.tipo_producto = 'farmaceutico' THEN pf.codigo_registro
-               WHEN os.tipo_producto = 'dispositivo_medico' THEN dm.codigo_registro
-               WHEN os.tipo_producto = 'biologico' THEN pb.codigo_registro
-             END as producto_registro
-      FROM ordenes_servicio os
-      LEFT JOIN clientes c ON os.cliente_id = c.id
-      LEFT JOIN productos_farmaceuticos pf ON os.tipo_producto = 'farmaceutico' AND os.producto_id = pf.id
-      LEFT JOIN dispositivos_medicos dm ON os.tipo_producto = 'dispositivo_medico' AND os.producto_id = dm.id
-      LEFT JOIN productos_biologicos pb ON os.tipo_producto = 'biologico' AND os.producto_id = pb.id
-      ORDER BY os.created_at DESC
+    const [ordenes] = await pool.query(`
+      SELECT o.*, c.razon_social as cliente_nombre, c.ruc as cliente_ruc
+      FROM ordenes o
+      LEFT JOIN clientes c ON o.cliente_id = c.id
+      ORDER BY o.created_at DESC
     `);
-    res.json(rows);
+
+    for (let orden of ordenes) {
+      const [productos] = await pool.query(`
+        SELECT op.*,
+          CASE 
+            WHEN op.tipo_producto = 'farmaceutico' THEN pf.nombre_producto
+            WHEN op.tipo_producto = 'dispositivo_medico' THEN dm.nombre_producto
+            WHEN op.tipo_producto = 'biologico' THEN pb.nombre_producto
+          END as producto_nombre,
+          CASE 
+            WHEN op.tipo_producto = 'farmaceutico' THEN pf.codigo_registro
+            WHEN op.tipo_producto = 'dispositivo_medico' THEN dm.codigo_registro
+            WHEN op.tipo_producto = 'biologico' THEN pb.codigo_registro
+          END as producto_registro
+        FROM orden_productos op
+        LEFT JOIN productos_farmaceuticos pf ON op.tipo_producto = 'farmaceutico' AND op.producto_id = pf.id
+        LEFT JOIN dispositivos_medicos dm ON op.tipo_producto = 'dispositivo_medico' AND op.producto_id = dm.id
+        LEFT JOIN productos_biologicos pb ON op.tipo_producto = 'biologico' AND op.producto_id = pb.id
+        WHERE op.orden_id = ?
+      `, [orden.id]);
+
+      orden.productos = productos;
+    }
+
+    res.json(ordenes);
   } catch (error) {
     console.error('Error al obtener órdenes:', error);
     res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
-// Obtener orden por ID (con joins para nombres)
+// -------------------------------------------------------------------
+// Obtener una orden por ID con sus productos
+// -------------------------------------------------------------------
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await pool.query(`
-      SELECT os.*, 
-             c.razon_social as cliente_nombre, c.ruc as cliente_ruc,
-             CASE 
-               WHEN os.tipo_producto = 'farmaceutico' THEN pf.nombre_producto
-               WHEN os.tipo_producto = 'dispositivo_medico' THEN dm.nombre_producto
-               WHEN os.tipo_producto = 'biologico' THEN pb.nombre_producto
-             END as producto_nombre,
-             CASE 
-               WHEN os.tipo_producto = 'farmaceutico' THEN pf.codigo_registro
-               WHEN os.tipo_producto = 'dispositivo_medico' THEN dm.codigo_registro
-               WHEN os.tipo_producto = 'biologico' THEN pb.codigo_registro
-             END as producto_registro
-      FROM ordenes_servicio os
-      LEFT JOIN clientes c ON os.cliente_id = c.id
-      LEFT JOIN productos_farmaceuticos pf ON os.tipo_producto = 'farmaceutico' AND os.producto_id = pf.id
-      LEFT JOIN dispositivos_medicos dm ON os.tipo_producto = 'dispositivo_medico' AND os.producto_id = dm.id
-      LEFT JOIN productos_biologicos pb ON os.tipo_producto = 'biologico' AND os.producto_id = pb.id
-      WHERE os.id = ?
+
+    const [ordenes] = await pool.query(`
+      SELECT o.*, c.razon_social as cliente_nombre, c.ruc as cliente_ruc
+      FROM ordenes o
+      LEFT JOIN clientes c ON o.cliente_id = c.id
+      WHERE o.id = ?
     `, [id]);
-    
-    if (rows.length === 0) {
+
+    if (ordenes.length === 0) {
       return res.status(404).json({ error: 'Orden no encontrada' });
     }
-    
-    res.json(rows[0]);
+
+    const orden = ordenes[0];
+
+    const [productos] = await pool.query(`
+      SELECT op.*,
+        CASE 
+          WHEN op.tipo_producto = 'farmaceutico' THEN pf.nombre_producto
+          WHEN op.tipo_producto = 'dispositivo_medico' THEN dm.nombre_producto
+          WHEN op.tipo_producto = 'biologico' THEN pb.nombre_producto
+        END as producto_nombre,
+        CASE 
+          WHEN op.tipo_producto = 'farmaceutico' THEN pf.codigo_registro
+          WHEN op.tipo_producto = 'dispositivo_medico' THEN dm.codigo_registro
+          WHEN op.tipo_producto = 'biologico' THEN pb.codigo_registro
+        END as producto_registro
+      FROM orden_productos op
+      LEFT JOIN productos_farmaceuticos pf ON op.tipo_producto = 'farmaceutico' AND op.producto_id = pf.id
+      LEFT JOIN dispositivos_medicos dm ON op.tipo_producto = 'dispositivo_medico' AND op.producto_id = dm.id
+      LEFT JOIN productos_biologicos pb ON op.tipo_producto = 'biologico' AND op.producto_id = pb.id
+      WHERE op.orden_id = ?
+    `, [id]);
+
+    orden.productos = productos;
+    res.json(orden);
   } catch (error) {
     console.error('Error al obtener orden:', error);
     res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
-// Crear nueva orden de servicio
+// -------------------------------------------------------------------
+// Crear nueva orden con múltiples productos
+// -------------------------------------------------------------------
 router.post('/', async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    const {
-      tipo_producto,
-      cliente_id,
-      producto_id,
-      categoria1,
-      categoria2,
-      cambio_mayor,
-      cambio_mayor_autorizado,
-      cambio_menor,
-      cambio_menor_autorizado,
-      inscripcion,
-      inscripcion_autorizado,
-      renovacion,
-      renovacion_autorizado,
-      traduccion,
-      traduccion_autorizado,
-      clase1,
-      clase1_autorizado,
-      clase2,
-      clase2_autorizado,
-      clase3,
-      clase3_autorizado,
-      clase4,
-      clase4_autorizado,
-      vaccines_immunologicos,
-      vaccines_immunologicos_autorizado,
-      otros_biologicos_chk,
-      otros_biologicos_autorizado,
-      bioequivalente_chk,
-      bioequivalente_autorizado,
-      biotecnologico_chk,
-      biotecnologico_autorizado,
-      cpb_numero,
-      monto,
-      fecha_recepcion,
-      fecha_ingreso_vuce,
-      fecha_fin_proceso,
-      observaciones
-    } = req.body;
+    await connection.beginTransaction();
 
-    const [result] = await pool.query(
-      `INSERT INTO ordenes_servicio 
-        (tipo_producto, cliente_id, producto_id, categoria1, categoria2,
-         cambio_mayor, cambio_mayor_autorizado, cambio_menor, cambio_menor_autorizado,
-         inscripcion, inscripcion_autorizado, renovacion, renovacion_autorizado,
-         traduccion, traduccion_autorizado, clase1, clase1_autorizado,
-         clase2, clase2_autorizado, clase3, clase3_autorizado,
-         clase4, clase4_autorizado, vaccines_immunologicos, vaccines_immunologicos_autorizado,
-         otros_biologicos_chk, otros_biologicos_autorizado, bioequivalente_chk, bioequivalente_autorizado,
-         biotecnologico_chk, biotecnologico_autorizado, cpb_numero, monto,
-         fecha_recepcion, fecha_ingreso_vuce, fecha_fin_proceso, observaciones)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tipo_producto, cliente_id, producto_id, categoria1 || false, categoria2 || false,
-       cambio_mayor || false, cambio_mayor_autorizado, cambio_menor || false, cambio_menor_autorizado,
-       inscripcion || false, inscripcion_autorizado, renovacion || false, renovacion_autorizado,
-       traduccion || false, traduccion_autorizado, clase1 || false, clase1_autorizado,
-       clase2 || false, clase2_autorizado, clase3 || false, clase3_autorizado,
-       clase4 || false, clase4_autorizado, vaccines_immunologicos || false, vaccines_immunologicos_autorizado,
-       otros_biologicos_chk || false, otros_biologicos_autorizado, bioequivalente_chk || false, bioequivalente_autorizado,
-       biotecnologico_chk || false, biotecnologico_autorizado, cpb_numero, monto,
-       fecha_recepcion, fecha_ingreso_vuce, fecha_fin_proceso, observaciones]
+    const { cliente_id, productos } = req.body;
+
+    if (!cliente_id || !Array.isArray(productos) || productos.length === 0) {
+      return res.status(400).json({ error: 'Debe proporcionar cliente y al menos un producto' });
+    }
+
+    const [ordenResult] = await connection.query(
+      'INSERT INTO ordenes (cliente_id) VALUES (?)',
+      [cliente_id]
     );
+    const ordenId = ordenResult.insertId;
 
-    const [nuevaOrden] = await pool.query('SELECT * FROM ordenes_servicio WHERE id = ?', [result.insertId]);
-    res.status(201).json(nuevaOrden[0]);
+    for (const prod of productos) {
+      const {
+        producto_id,
+        tipo_producto,
+        cpb_numero,
+        monto,
+        fecha_recepcion,
+        fecha_ingreso_vuce,
+        fecha_fin_proceso,
+        observaciones,
+        categoria1, categoria2,
+        cambio_mayor, cambio_mayor_autorizado,
+        cambio_menor, cambio_menor_autorizado,
+        inscripcion, inscripcion_autorizado,
+        renovacion, renovacion_autorizado,
+        traduccion, traduccion_autorizado,
+        clase1, clase1_autorizado,
+        clase2, clase2_autorizado,
+        clase3, clase3_autorizado,
+        clase4, clase4_autorizado,
+        vaccines_immunologicos, vaccines_immunologicos_autorizado,
+        otros_biologicos_chk, otros_biologicos_autorizado,
+        bioequivalente_chk, bioequivalente_autorizado,
+        biotecnologico_chk, biotecnologico_autorizado
+      } = prod;
+
+      await connection.query(
+        `INSERT INTO orden_productos (
+          orden_id, producto_id, tipo_producto,
+          cpb_numero, monto, fecha_recepcion, fecha_ingreso_vuce, fecha_fin_proceso, observaciones,
+          categoria1, categoria2,
+          cambio_mayor, cambio_mayor_autorizado, cambio_menor, cambio_menor_autorizado,
+          inscripcion, inscripcion_autorizado, renovacion, renovacion_autorizado,
+          traduccion, traduccion_autorizado,
+          clase1, clase1_autorizado, clase2, clase2_autorizado,
+          clase3, clase3_autorizado, clase4, clase4_autorizado,
+          vaccines_immunologicos, vaccines_immunologicos_autorizado,
+          otros_biologicos_chk, otros_biologicos_autorizado,
+          bioequivalente_chk, bioequivalente_autorizado,
+          biotecnologico_chk, biotecnologico_autorizado
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          ordenId, producto_id, tipo_producto,
+          cpb_numero || null, monto || null, fecha_recepcion || null, fecha_ingreso_vuce || null, fecha_fin_proceso || null, observaciones || null,
+          toBool(categoria1), toBool(categoria2),
+          toBool(cambio_mayor), cambio_mayor_autorizado || null,
+          toBool(cambio_menor), cambio_menor_autorizado || null,
+          toBool(inscripcion), inscripcion_autorizado || null,
+          toBool(renovacion), renovacion_autorizado || null,
+          toBool(traduccion), traduccion_autorizado || null,
+          toBool(clase1), clase1_autorizado || null,
+          toBool(clase2), clase2_autorizado || null,
+          toBool(clase3), clase3_autorizado || null,
+          toBool(clase4), clase4_autorizado || null,
+          toBool(vaccines_immunologicos), vaccines_immunologicos_autorizado || null,
+          toBool(otros_biologicos_chk), otros_biologicos_autorizado || null,
+          toBool(bioequivalente_chk), bioequivalente_autorizado || null,
+          toBool(biotecnologico_chk), biotecnologico_autorizado || null
+        ]
+      );
+    }
+
+    await connection.commit();
+
+    const [nuevaOrden] = await connection.query(`
+      SELECT o.*, c.razon_social as cliente_nombre, c.ruc as cliente_ruc
+      FROM ordenes o
+      LEFT JOIN clientes c ON o.cliente_id = c.id
+      WHERE o.id = ?
+    `, [ordenId]);
+
+    const orden = nuevaOrden[0];
+    const [productosInsertados] = await connection.query(
+      'SELECT * FROM orden_productos WHERE orden_id = ?',
+      [ordenId]
+    );
+    orden.productos = productosInsertados;
+
+    res.status(201).json(orden);
   } catch (error) {
+    await connection.rollback();
     console.error('Error al crear orden:', error);
     res.status(500).json({ error: 'Error del servidor' });
+  } finally {
+    connection.release();
   }
 });
 
-// Actualizar orden (usando el PUT genérico pero con mejor manejo)
+// -------------------------------------------------------------------
+// Actualizar orden completa (cabecera y productos)
+// -------------------------------------------------------------------
 router.put('/:id', async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    const { id } = req.params;
-    const fields = req.body;
-    
-    // Eliminar campos que no deben actualizarse directamente (como created_at)
-    delete fields.created_at;
-    delete fields.cliente_nombre;
-    delete fields.cliente_ruc;
-    delete fields.producto_nombre;
-    delete fields.producto_registro;
+    await connection.beginTransaction();
 
-    const updates = Object.keys(fields).map(key => `${key} = ?`).join(', ');
-    const values = [...Object.values(fields), id];
-    
-    await pool.query(`UPDATE ordenes_servicio SET ${updates} WHERE id = ?`, values);
-    
-    const [updatedOrden] = await pool.query('SELECT * FROM ordenes_servicio WHERE id = ?', [id]);
-    res.json(updatedOrden[0]);
+    const { id } = req.params;
+    const { cliente_id, productos } = req.body;
+
+    const [ordenExistente] = await connection.query('SELECT id FROM ordenes WHERE id = ?', [id]);
+    if (ordenExistente.length === 0) {
+      return res.status(404).json({ error: 'Orden no encontrada' });
+    }
+
+    if (!cliente_id || !Array.isArray(productos) || productos.length === 0) {
+      return res.status(400).json({ error: 'Debe proporcionar cliente y al menos un producto' });
+    }
+
+    await connection.query('UPDATE ordenes SET cliente_id = ? WHERE id = ?', [cliente_id, id]);
+    await connection.query('DELETE FROM orden_productos WHERE orden_id = ?', [id]);
+
+    for (const prod of productos) {
+      const {
+        producto_id,
+        tipo_producto,
+        cpb_numero,
+        monto,
+        fecha_recepcion,
+        fecha_ingreso_vuce,
+        fecha_fin_proceso,
+        observaciones,
+        categoria1, categoria2,
+        cambio_mayor, cambio_mayor_autorizado,
+        cambio_menor, cambio_menor_autorizado,
+        inscripcion, inscripcion_autorizado,
+        renovacion, renovacion_autorizado,
+        traduccion, traduccion_autorizado,
+        clase1, clase1_autorizado,
+        clase2, clase2_autorizado,
+        clase3, clase3_autorizado,
+        clase4, clase4_autorizado,
+        vaccines_immunologicos, vaccines_immunologicos_autorizado,
+        otros_biologicos_chk, otros_biologicos_autorizado,
+        bioequivalente_chk, bioequivalente_autorizado,
+        biotecnologico_chk, biotecnologico_autorizado
+      } = prod;
+
+      await connection.query(
+        `INSERT INTO orden_productos (
+          orden_id, producto_id, tipo_producto,
+          cpb_numero, monto, fecha_recepcion, fecha_ingreso_vuce, fecha_fin_proceso, observaciones,
+          categoria1, categoria2,
+          cambio_mayor, cambio_mayor_autorizado, cambio_menor, cambio_menor_autorizado,
+          inscripcion, inscripcion_autorizado, renovacion, renovacion_autorizado,
+          traduccion, traduccion_autorizado,
+          clase1, clase1_autorizado, clase2, clase2_autorizado,
+          clase3, clase3_autorizado, clase4, clase4_autorizado,
+          vaccines_immunologicos, vaccines_immunologicos_autorizado,
+          otros_biologicos_chk, otros_biologicos_autorizado,
+          bioequivalente_chk, bioequivalente_autorizado,
+          biotecnologico_chk, biotecnologico_autorizado
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id, producto_id, tipo_producto,
+          cpb_numero || null, monto || null, fecha_recepcion || null, fecha_ingreso_vuce || null, fecha_fin_proceso || null, observaciones || null,
+          toBool(categoria1), toBool(categoria2),
+          toBool(cambio_mayor), cambio_mayor_autorizado || null,
+          toBool(cambio_menor), cambio_menor_autorizado || null,
+          toBool(inscripcion), inscripcion_autorizado || null,
+          toBool(renovacion), renovacion_autorizado || null,
+          toBool(traduccion), traduccion_autorizado || null,
+          toBool(clase1), clase1_autorizado || null,
+          toBool(clase2), clase2_autorizado || null,
+          toBool(clase3), clase3_autorizado || null,
+          toBool(clase4), clase4_autorizado || null,
+          toBool(vaccines_immunologicos), vaccines_immunologicos_autorizado || null,
+          toBool(otros_biologicos_chk), otros_biologicos_autorizado || null,
+          toBool(bioequivalente_chk), bioequivalente_autorizado || null,
+          toBool(biotecnologico_chk), biotecnologico_autorizado || null
+        ]
+      );
+    }
+
+    await connection.commit();
+
+    const [ordenActualizada] = await connection.query(`
+      SELECT o.*, c.razon_social as cliente_nombre, c.ruc as cliente_ruc
+      FROM ordenes o
+      LEFT JOIN clientes c ON o.cliente_id = c.id
+      WHERE o.id = ?
+    `, [id]);
+
+    const orden = ordenActualizada[0];
+    const [productosInsertados] = await connection.query(
+      'SELECT * FROM orden_productos WHERE orden_id = ?',
+      [id]
+    );
+    orden.productos = productosInsertados;
+
+    res.json(orden);
   } catch (error) {
+    await connection.rollback();
     console.error('Error al actualizar orden:', error);
     res.status(500).json({ error: 'Error del servidor' });
+  } finally {
+    connection.release();
   }
 });
 
+// -------------------------------------------------------------------
 // Eliminar orden
+// -------------------------------------------------------------------
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM ordenes_servicio WHERE id = ?', [id]);
+    await pool.query('DELETE FROM ordenes WHERE id = ?', [id]);
     res.json({ message: 'Orden eliminada correctamente' });
   } catch (error) {
     console.error('Error al eliminar orden:', error);
