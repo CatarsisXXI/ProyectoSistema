@@ -206,6 +206,9 @@ const initDatabase = async () => {
       orden_id INT,
       monto_orden DECIMAL(10,2) DEFAULT 0,
       
+      -- Usuario que creó el documento
+      usuario_id INT,
+      
       tipo_producto ENUM('farmaceutico', 'dispositivo_medico', 'biologico') NOT NULL,
       cliente_id INT NOT NULL,
       producto_id INT NOT NULL,
@@ -264,6 +267,7 @@ const initDatabase = async () => {
     `ALTER TABLE documentos_contables ADD COLUMN IF NOT EXISTS numero_documento VARCHAR(20) AFTER tipo_documento`,
     `ALTER TABLE documentos_contables ADD COLUMN IF NOT EXISTS orden_id INT AFTER numero_documento`,
     `ALTER TABLE documentos_contables ADD COLUMN IF NOT EXISTS monto_orden DECIMAL(10,2) DEFAULT 0 AFTER orden_id`,
+    `ALTER TABLE documentos_contables ADD COLUMN IF NOT EXISTS usuario_id INT AFTER monto_orden`,
   ];
   for (const sql of alterColumns) {
     try { await connection.query(sql); } catch (e) { /* columna ya existe */ }

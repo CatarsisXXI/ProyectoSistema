@@ -1,7 +1,9 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const { pool } = require('../database');
 
 const router = express.Router();
+const JWT_SECRET = 'sgr_secret_key_2024';
 
 // Middleware para verificar autenticación
 const authenticateToken = (req, res, next) => {
@@ -9,7 +11,13 @@ const authenticateToken = (req, res, next) => {
   if (!token) {
     return res.status(401).json({ error: 'Acceso no autorizado' });
   }
-  next();
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Token inválido' });
+  }
 };
 
 router.use(authenticateToken);

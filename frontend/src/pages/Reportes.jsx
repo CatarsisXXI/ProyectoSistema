@@ -150,6 +150,98 @@ function Reportes() {
     }
   };
 
+  // Obtener servicios de los productos de la orden
+  const getServiciosFromOrdenProductos = (productos) => {
+    const todosServicios = [];
+    
+    productos.forEach(prod => {
+      const tipo = prod.tipo_producto;
+      let servicios = [];
+      
+      if (tipo === 'farmaceutico') {
+        const nombres = {
+          inscripcion: 'Inscripción',
+          renovacion: 'Renovación',
+          traduccion: 'Traducción',
+          cambio_mayor: 'Cambio Mayor',
+          cambio_menor: 'Cambio Menor'
+        };
+        
+        Object.keys(nombres).forEach(key => {
+          if (prod[key] === true || prod[key] === 1) {
+            const aplicaCategorias = ['cambio_mayor', 'cambio_menor', 'inscripcion', 'renovacion'].includes(key);
+            
+            if (aplicaCategorias) {
+              if (prod.categoria1) {
+                todosServicios.push({
+                  nombre: nombres[key],
+                  categoria: 'Categoría 1',
+                  producto: prod.producto_nombre,
+                  sanitario: prod.producto_registro
+                });
+              }
+              if (prod.categoria2) {
+                todosServicios.push({
+                  nombre: nombres[key],
+                  categoria: 'Categoría 2',
+                  producto: prod.producto_nombre,
+                  sanitario: prod.producto_registro
+                });
+              }
+            } else {
+              todosServicios.push({
+                nombre: nombres[key],
+                categoria: '',
+                producto: prod.producto_nombre,
+                sanitario: prod.producto_registro
+              });
+            }
+          }
+        });
+      } else if (tipo === 'dispositivo_medico') {
+        const nombres = {
+          clase1: 'Clase 1',
+          clase2: 'Clase 2',
+          clase3: 'Clase 3',
+          clase4: 'Clase 4',
+          traduccion: 'Traducción'
+        };
+        
+        Object.keys(nombres).forEach(key => {
+          if (prod[key] === true || prod[key] === 1) {
+            todosServicios.push({
+              nombre: nombres[key],
+              categoria: '',
+              producto: prod.producto_nombre,
+              sanitario: prod.producto_registro
+            });
+          }
+        });
+      } else if (tipo === 'biologico') {
+        const nombres = {
+          vaccines_immunologicos: 'Vacunas e Inmunológicos',
+          otros_biologicos: 'Otros Biológicos',
+          bioequivalente: 'Bioequivalente',
+          biotecnologico: 'Biotecnológico',
+          traduccion: 'Traducción'
+        };
+        
+        Object.keys(nombres).forEach(key => {
+          if (prod[key] === true || prod[key] === 1) {
+            todosServicios.push({
+              nombre: nombres[key],
+              categoria: '',
+              producto: prod.producto_nombre,
+              sanitario: prod.producto_registro
+            });
+          }
+        });
+      }
+    });
+    
+    return todosServicios;
+  };
+
   const formatCurrency = (amount) => {
     return `S/ ${parseFloat(amount || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
@@ -292,7 +384,9 @@ function Reportes() {
       </style>
     `;
 
-    const servicios = getServicios(reporte);
+    const servicios = reporte.productos_orden?.length > 0 
+      ? getServiciosFromOrdenProductos(reporte.productos_orden)
+      : getServicios(reporte);
 
     const html = `
       <!DOCTYPE html>
@@ -463,7 +557,11 @@ function Reportes() {
       ) : (
         <div className="space-y-6">
           {filteredReportes.map((reporte) => {
-            const servicios = getServicios(reporte);
+            // Obtener servicios de productos de la orden o del documento directo
+            const servicios = reporte.productos_orden?.length > 0 
+              ? getServiciosFromOrdenProductos(reporte.productos_orden)
+              : getServicios(reporte);
+            
             return (
               <div key={reporte.id} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden print:break-inside-avoid">
                 {/* Cabecera del reporte */}
@@ -494,13 +592,36 @@ function Reportes() {
                     <div className="flex items-center gap-2">
                       <User size={16} className="text-blue-500" />
                       <span className="font-medium text-slate-700">Cliente:</span>
-                      <span className="text-slate-600">{reporte.cliente}</span>
+                      <span className="text-slate-600">{reporte.cliente || '-'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-slate-500">RUC:</span>
-                      <span className="font-mono text-sm">{reporte.ruc}</span>
+                      <span className="font-mono text-sm">{reporte.ruc || '-'}</span>
                     </div>
                   </div>
+
+                  {/* Productos de la orden (si existen) */}
+                  {reporte.productos_orden?.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                        <Package size={16} className="text-blue-500" />
+                        Productos en la Orden
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {reporte.productos_orden.map((prod, idx) => (
+                          <div key={idx} className="bg-slate-50 p-3 rounded-lg text-sm border border-slate-200">
+                            <div className="font-medium text-slate-700">{prod.producto_nombre}</div>
+                            <div className="text-xs text-slate-500">Reg: {prod.producto_registro}</div>
+                            {prod.monto && (
+                              <div className="text-xs font-semibold text-emerald-600 mt-1">
+                                S/ {parseFloat(prod.monto).toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Servicios */}
                   {servicios.length > 0 && (

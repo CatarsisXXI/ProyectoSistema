@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../database');
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'sgr_secret_key';
+const JWT_SECRET = 'sgr_secret_key_2024';
 
 // ── Auth middleware: decodifica el token para obtener usuario_id y nombre ──
 const authenticateToken = (req, res, next) => {
@@ -81,8 +81,8 @@ const queryOrdenProductos = `
 // ── SELECT base de documentos con usuario_nombre ──
 const SELECT_BASE = `
   SELECT dc.*,
-         c.razon_social  AS cliente_nombre,
-         c.ruc           AS cliente_ruc,
+         c.razon_social  AS cliente,
+         c.ruc           AS ruc,
          u.nombre_completo AS usuario_nombre,
          CASE
            WHEN dc.tipo_producto = 'farmaceutico'      THEN pf.nombre_producto
@@ -93,7 +93,7 @@ const SELECT_BASE = `
            WHEN dc.tipo_producto = 'farmaceutico'      THEN pf.codigo_registro
            WHEN dc.tipo_producto = 'dispositivo_medico' THEN dm.codigo_registro
            WHEN dc.tipo_producto = 'biologico'          THEN pb.codigo_registro
-         END AS producto_registro
+         END AS registro_sanitario
   FROM documentos_contables dc
   LEFT JOIN clientes c ON dc.cliente_id = c.id
   LEFT JOIN usuarios  u ON dc.usuario_id = u.id
@@ -101,6 +101,28 @@ const SELECT_BASE = `
   LEFT JOIN dispositivos_medicos    dm  ON dc.tipo_producto = 'dispositivo_medico' AND dc.producto_id = dm.id
   LEFT JOIN productos_biologicos    pb  ON dc.tipo_producto = 'biologico'           AND dc.producto_id = pb.id
 `;
+
+// ── GET reporte contabilidad ──
+router.get('/reporte/contabilidad', async (req, res) => {
+  try {
+    const [rows] = await pool.query(SELECT_BASE + ' ORDER BY dc.created_at DESC');
+    
+    // Para cada documento, obtener los productos de la orden si existe
+    for (let doc of rows) {
+      if (doc.orden_id) {
+        const [prods] = await pool.query(queryOrdenProductos, [doc.orden_id]);
+        doc.productos_orden = prods;
+      } else {
+        doc.productos_orden = [];
+      }
+    }
+    
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
 
 // ── GET todos ──
 router.get('/', async (req, res) => {
