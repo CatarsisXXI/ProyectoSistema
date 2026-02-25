@@ -141,32 +141,52 @@ function VerDocumento() {
     );
   };
 
+  // ── Renderizar servicios de productos de la orden ──
+  const renderServiciosOrdenProducto = (prod) => {
+    const tipo = prod.tipo_producto;
+    const servicios = [];
+
+    if (tipo === 'farmaceutico') {
+      if (toBoolean(prod.cambio_mayor))  servicios.push({ label: 'Cambio Mayor',  costo: prod.cambio_mayor_costo, moneda: prod.cambio_mayor_moneda });
+      if (toBoolean(prod.cambio_menor))  servicios.push({ label: 'Cambio Menor',  costo: prod.cambio_menor_costo, moneda: prod.cambio_menor_moneda });
+      if (toBoolean(prod.inscripcion))   servicios.push({ label: 'Inscripción',   costo: prod.inscripcion_costo, moneda: prod.inscripcion_moneda });
+      if (toBoolean(prod.renovacion))    servicios.push({ label: 'Renovación',    costo: prod.renovacion_costo, moneda: prod.renovacion_moneda });
+      if (toBoolean(prod.traduccion))    servicios.push({ label: 'Traducción',    costo: prod.traduccion_costo, moneda: prod.traduccion_moneda });
+    } else if (tipo === 'dispositivo_medico') {
+      [1,2,3,4].forEach(n => {
+        if (toBoolean(prod[`clase${n}`])) servicios.push({ label: `Clase ${n}`, costo: prod[`clase${n}_costo`], moneda: prod[`clase${n}_moneda`] });
+      });
+      if (toBoolean(prod.traduccion)) servicios.push({ label: 'Traducción', costo: prod.traduccion_costo, moneda: prod.traduccion_moneda });
+    } else if (tipo === 'biologico') {
+      if (toBoolean(prod.vaccines_inmunologicos)) servicios.push({ label: 'Vacunas e Inmunológicos', costo: prod.vaccines_inmunologicos_costo, moneda: prod.vaccines_inmunologicos_moneda });
+      if (toBoolean(prod.otros_biologicos))       servicios.push({ label: 'Otros Biológicos',        costo: prod.otros_biologicos_costo,       moneda: prod.otros_biologicos_moneda });
+      if (toBoolean(prod.bioequivalente))         servicios.push({ label: 'Bioequivalente',          costo: prod.bioequivalente_costo,         moneda: prod.bioequivalente_moneda });
+      if (toBoolean(prod.biotecnologico))         servicios.push({ label: 'Biotecnológico',          costo: prod.biotecnologico_costo,         moneda: prod.biotecnologico_moneda });
+      if (toBoolean(prod.traduccion))             servicios.push({ label: 'Traducción',              costo: prod.traduccion_costo,             moneda: prod.traduccion_moneda });
+    }
+
+    if (servicios.length === 0) return null;
+
+    return (
+      <div className="mt-3 pt-3 border-t border-slate-200">
+        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Costos de Servicios</p>
+        <div className="space-y-1">
+          {servicios.map((srv, i) => (
+            <div key={i} className="flex justify-between items-center text-sm">
+              <span className="text-slate-700">{srv.label}</span>
+              <span className="font-semibold text-blue-700">{fmtMonto(srv.costo, srv.moneda)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // ── Renderizar un producto de la orden ──
   const renderProductoOrden = (prod, idx) => {
     const esBio = prod.tipo_producto === 'biologico';
     const bgCls = TIPO_PRODUCTO_COLOR_BG[prod.tipo_producto] || 'bg-slate-50 border-slate-200';
     const badgeCls = TIPO_PRODUCTO_BADGE[prod.tipo_producto] || 'bg-slate-100 text-slate-800';
-
-    // Servicios habilitados en la orden
-    const serviciosOrden = [];
-    if (prod.tipo_producto === 'farmaceutico') {
-      if (toBoolean(prod.cambio_mayor))  serviciosOrden.push({ label: 'Cambio Mayor',  autorizado: prod.cambio_mayor_autorizado });
-      if (toBoolean(prod.cambio_menor))  serviciosOrden.push({ label: 'Cambio Menor',  autorizado: prod.cambio_menor_autorizado });
-      if (toBoolean(prod.inscripcion))   serviciosOrden.push({ label: 'Inscripción',   autorizado: prod.inscripcion_autorizado });
-      if (toBoolean(prod.renovacion))    serviciosOrden.push({ label: 'Renovación',    autorizado: prod.renovacion_autorizado });
-      if (toBoolean(prod.traduccion))    serviciosOrden.push({ label: 'Traducción',    autorizado: prod.traduccion_autorizado });
-    } else if (prod.tipo_producto === 'dispositivo_medico') {
-      [1,2,3,4].forEach(n => {
-        if (toBoolean(prod[`clase${n}`])) serviciosOrden.push({ label: `Clase ${n}`, autorizado: prod[`clase${n}_autorizado`] });
-      });
-      if (toBoolean(prod.traduccion)) serviciosOrden.push({ label: 'Traducción', autorizado: prod.traduccion_autorizado });
-    } else if (prod.tipo_producto === 'biologico') {
-      if (toBoolean(prod.vaccines_immunologicos)) serviciosOrden.push({ label: 'Vacunas e Inmunológicos', autorizado: prod.vaccines_immunologicos_autorizado });
-      if (toBoolean(prod.otros_biologicos_chk))   serviciosOrden.push({ label: 'Otros Biológicos',        autorizado: prod.otros_biologicos_autorizado });
-      if (toBoolean(prod.bioequivalente_chk))     serviciosOrden.push({ label: 'Bioequivalente',          autorizado: prod.bioequivalente_autorizado });
-      if (toBoolean(prod.biotecnologico_chk))     serviciosOrden.push({ label: 'Biotecnológico',          autorizado: prod.biotecnologico_autorizado });
-      if (toBoolean(prod.traduccion))             serviciosOrden.push({ label: 'Traducción',              autorizado: prod.traduccion_autorizado });
-    }
 
     return (
       <div key={idx} className={`rounded-xl border p-5 ${bgCls}`}>
@@ -227,25 +247,8 @@ function VerDocumento() {
           )}
         </div>
 
-        {/* Servicios del producto */}
-        {serviciosOrden.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Servicios solicitados en la orden</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {serviciosOrden.map((srv, i) => (
-                <div key={i} className="bg-white rounded-lg px-3 py-2 border border-white/60 flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-700">{srv.label}</p>
-                    {srv.autorizado && (
-                      <p className="text-xs text-slate-500">Autorizado por: {srv.autorizado}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Servicios del producto con costos */}
+        {renderServiciosOrdenProducto(prod)}
 
         {prod.observaciones && (
           <div className="mt-3 bg-white rounded-lg p-3 border border-white/60">
@@ -358,7 +361,7 @@ function VerDocumento() {
             ${badgeDoc(documento.tipo_documento)}
             <h1 style="margin-top:6px;">Documento Contable #${documento.id}</h1>
             <div class="num-doc">${documento.numero_documento || '-'}</div>
-            ${documento.orden_id ? `<div style="font-size:12px;color:#64748b;">Generado desde Orden #${documento.orden_id}</div>` : ''}
+            ${documento.orden_id ? `<div:12px;color style="font-size:#64748b;">Generado desde Orden #${documento.orden_id}</div>` : ''}
           </div>
           <div style="text-align:right;color:#475569;">
             <div style="font-weight:700;font-size:14px;">SGR</div>
@@ -372,8 +375,8 @@ function VerDocumento() {
           <div class="section-title">Cliente</div>
           <div class="section-body">
             <div class="grid-2">
-              <div><div class="field-label">Razón Social</div><div class="field-value">${documento.cliente_nombre || '-'}</div></div>
-              <div><div class="field-label">RUC</div><div class="field-value">${documento.cliente_ruc || '-'}</div></div>
+              <div><div class="field-label">Razón Social</div><div class="field-value">${documento.cliente || '-'}</div></div>
+              <div><div class="field-label">RUC</div><div class="field-value">${documento.ruc || '-'}</div></div>
             </div>
           </div>
         </div>
@@ -518,11 +521,11 @@ function VerDocumento() {
           <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-slate-500 mb-1">Razón Social</p>
-              <p className="font-semibold text-slate-800">{documento.cliente_nombre || '-'}</p>
+              <p className="font-semibold text-slate-800">{documento.cliente || '-'}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-1">RUC</p>
-              <p className="font-semibold text-slate-800">{documento.cliente_ruc || '-'}</p>
+              <p className="font-semibold text-slate-800">{documento.ruc || '-'}</p>
             </div>
           </div>
         </div>

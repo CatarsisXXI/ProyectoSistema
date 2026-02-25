@@ -148,8 +148,8 @@ function EditarDocumento() {
       }
 
       setPdfActual(data.pdf_adjunto || '');
-      setClienteSeleccionado({ id: data.cliente_id, razon_social: data.cliente_nombre, ruc: data.cliente_ruc });
-      setBusquedaRUC(data.cliente_ruc || '');
+      setClienteSeleccionado({ id: data.cliente_id, razon_social: data.cliente, ruc: data.ruc });
+      setBusquedaRUC(data.ruc || '');
       setProductoSeleccionado({ id: data.producto_id, nombre_producto: data.producto_nombre, codigo_registro: data.producto_registro });
       setBusquedaProducto(data.producto_nombre || '');
 

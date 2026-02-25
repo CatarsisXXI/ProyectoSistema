@@ -186,10 +186,10 @@ function DocumentosContables() {
                       </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-700 max-w-[160px] truncate">
-                      {doc.cliente_nombre}
+                      {doc.cliente || '-'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
-                      {doc.cliente_ruc}
+                      {doc.ruc || '-'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500 max-w-[130px] truncate">
                       {doc.producto_nombre || '-'}
