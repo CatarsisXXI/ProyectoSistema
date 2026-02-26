@@ -134,18 +134,6 @@ function DocumentosContables() {
             ))}
           </div>
         </div>
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Filter size={15} className="text-slate-400" />
-            <span className="text-sm font-semibold text-slate-600">Tipo de producto:</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <FilterBtn value="" label="Todos" current={filterTipo} onClick={setFilterTipo} />
-            <FilterBtn value="farmaceutico"       label="Farmacéutico"       current={filterTipo} onClick={setFilterTipo} />
-            <FilterBtn value="dispositivo_medico" label="Dispositivo Médico" current={filterTipo} onClick={setFilterTipo} />
-            <FilterBtn value="biologico"          label="Biológico"          current={filterTipo} onClick={setFilterTipo} />
-          </div>
-        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">

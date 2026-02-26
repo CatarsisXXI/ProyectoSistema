@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
@@ -39,6 +40,7 @@ function App() {
 }
 
 function PrivateRoutes() {
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const token = localStorage.getItem('token');
   
   if (!token) {
@@ -47,8 +49,8 @@ function PrivateRoutes() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 ml-60 p-6">
+      <Sidebar expanded={sidebarExpanded} onToggle={() => setSidebarExpanded(!sidebarExpanded)} />
+      <main className={`flex-1 p-6 transition-all duration-300 ${sidebarExpanded ? 'ml-64' : 'ml-16'}`}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/clientes" element={<Clientes />} />
